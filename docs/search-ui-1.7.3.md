@@ -1,5 +1,7 @@
 # Search redesign 1.7.3
 
+The earlier emulator blocker was resolved in the [1.7.4 verification follow-up](search-ui-1.7.4.md), which includes successful light/dark UI runs and screenshots.
+
 Search uses Plume's existing wallpaper, low-resolution frost, glass surfaces, light/dark theme, and remote-focus treatment. Results are poster cards. Selecting a title opens a large artwork panel and viewing-option tiles grouped as Subscription, Free to watch, and Rent or buy. Back returns to the previously selected poster. Artwork failures leave labeled, usable cards.
 
 My services starts with Installed, or Popular when no recognized services are installed. Selected and All services tabs and a name filter replace the long default checkbox list. Direct plan variants share one choice; Amazon, Apple, and Roku add-on channels remain separate. Unknown saved IDs are retained unless the user removes them explicitly. Save commits the draft; Cancel and Back leave it unchanged. At most 48 catalog cards render at once, with full-catalog name filtering available.

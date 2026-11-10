@@ -29,14 +29,21 @@ import java.util.function.BooleanSupplier;
 /** Offline parser checks using Android's actual JSON and URI implementations. */
 public final class SearchInstrumentation extends Instrumentation {
     private int checks;
+    private String testTheme;
 
     @Override public void onCreate(Bundle arguments) {
         super.onCreate(arguments);
+        testTheme = arguments == null ? null : arguments.getString("theme");
         start();
     }
 
     @Override public void onStart() {
         Bundle results = new Bundle();
+        SharedPreferences home = getTargetContext().getSharedPreferences("home", Context.MODE_PRIVATE);
+        boolean hadTheme = home.contains("theme");
+        String oldTheme = home.getString("theme", "light");
+        if ("light".equals(testTheme) || "dark".equals(testTheme)) home.edit().putString("theme", testTheme).commit();
+        int outcome = Activity.RESULT_OK;
         try {
             searchFixtures();
             availabilityFixtures();
@@ -46,12 +53,16 @@ public final class SearchInstrumentation extends Instrumentation {
             tokenFieldIsMasked();
             launcherSearchNavigation();
             results.putString("stream", "\nPassed " + checks + " search and launcher-navigation checks.\n");
-            finish(Activity.RESULT_OK, results);
         } catch (Throwable failure) {
             results.putString("stream", "\nFAILED after " + checks + " checks:\n"
                     + Log.getStackTraceString(failure));
-            finish(Activity.RESULT_CANCELED, results);
+            outcome = Activity.RESULT_CANCELED;
+        } finally {
+            SharedPreferences.Editor restore = home.edit();
+            if (hadTheme) restore.putString("theme", oldTheme); else restore.remove("theme");
+            restore.commit();
         }
+        finish(outcome, results);
     }
 
     private void searchFixtures() throws Exception {
@@ -200,9 +211,17 @@ public final class SearchInstrumentation extends Instrumentation {
             runOnMainSync(() -> dev.plume.SearchStyleCheck.run(searchActivity));
             checks += SearchVisualCheck.run(this, (SearchActivity) searchActivity);
             selectedTitleBackReturnsToResults((SearchActivity) searchActivity);
+            await(searchActivity::hasWindowFocus, "Results lost window focus before Back.");
             sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
-            await(() -> searchActivity.isFinishing() && homeActivity.hasWindowFocus(),
-                    "Back from search did not return to the same Plume home screen.");
+            try {
+                await(() -> searchActivity.isFinishing() && homeActivity.hasWindowFocus(),
+                        "Back from search did not return to the same Plume home screen.");
+            } catch (AssertionError failure) {
+                SearchVisualCheck.shot(this, "plume-back-failure.png");
+                AccessibilityNodeInfo active = getUiAutomation().getRootInActiveWindow();
+                throw new AssertionError(failure.getMessage() + " finishing=" + searchActivity.isFinishing()
+                        + " homeDestroyed=" + homeActivity.isDestroyed() + " active=" + (active == null ? "none" : active.getPackageName()));
+            }
             check(!homeActivity.isFinishing(), "Search closed the launcher behind it.");
             check(testBar.equals(home.getString("top_bar", null)) && "mono".equals(home.getString("icon_style", null)),
                     "Search changed Plume's top-bar order or monochrome preference.");

@@ -7,6 +7,7 @@ import android.os.ParcelFileDescriptor;
 import android.util.LruCache;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import dev.plume.R;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -18,7 +19,7 @@ final class SearchVisualCheck {
     static int run(Instrumentation test, SearchActivity activity) throws Exception {
         Field titles = field("titles"), cache = field("posters"), selected = field("selected"), offers = field("availability");
         Method results = method("showResults"), details = method("renderAvailability");
-        BitmapFactory.Options options = new BitmapFactory.Options(); options.inSampleSize = 2;
+        BitmapFactory.Options options = new BitmapFactory.Options(); options.inSampleSize = 4;
         Bitmap art = BitmapFactory.decodeResource(activity.getResources(), R.drawable.wallpaper_aurora, options);
         ArrayList<TmdbCatalog.Title> fixture = new ArrayList<>();
         for (int i = 0; i < 6; i++) fixture.add(new TmdbCatalog.Title(100 + i, "movie", "Design preview " + (i + 1), "2026",
@@ -47,11 +48,29 @@ final class SearchVisualCheck {
             } catch (Exception error) { throw new AssertionError(error); }
         });
         test.waitForIdleSync(); shot(test, "plume-detail-preview.png");
+        test.runOnMainSync(() -> {
+            View provider = provider(activity.findViewById(android.R.id.content), "Netflix,");
+            if (provider == null || !provider.requestFocus()) throw new AssertionError("Subscription tile cannot receive remote focus.");
+        });
+        test.waitForIdleSync(); shot(test, "plume-offers-preview.png");
+        test.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN); test.waitForIdleSync();
+        if (activity.getCurrentFocus() == null || !String.valueOf(activity.getCurrentFocus().getContentDescription()).startsWith("Tubi,"))
+            throw new AssertionError("Down did not reach the free viewing option.");
+        test.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN); test.waitForIdleSync();
+        if (activity.getCurrentFocus() == null || !String.valueOf(activity.getCurrentFocus().getContentDescription()).startsWith("Amazon Prime Video,"))
+            throw new AssertionError("Down did not reach the rental viewing option.");
         test.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); test.waitForIdleSync();
         if (selected.get(activity) != null || activity.isFinishing()) throw new AssertionError("Details Back lost the poster results.");
         if (activity.getCurrentFocus() == null || !activity.getCurrentFocus().getContentDescription().toString().contains("Design preview 2"))
             throw new AssertionError("Details Back did not restore the selected poster.");
-        return 3;
+        return 6;
+    }
+    private static View provider(View view, String prefix) {
+        if (String.valueOf(view.getContentDescription()).startsWith(prefix)) return view;
+        if (view instanceof ViewGroup) for (int i = 0; i < ((ViewGroup) view).getChildCount(); i++) {
+            View found = provider(((ViewGroup) view).getChildAt(i), prefix); if (found != null) return found;
+        }
+        return null;
     }
     private static Field field(String name) throws Exception { Field f = SearchActivity.class.getDeclaredField(name); f.setAccessible(true); return f; }
     private static Method method(String name) throws Exception { Method m = SearchActivity.class.getDeclaredMethod(name); m.setAccessible(true); return m; }

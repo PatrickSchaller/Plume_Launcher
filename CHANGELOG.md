@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.4
+
+- Keep poster titles visible with a more compact search header.
+- Verify service selection and search navigation in light and dark themes.
+
 ## 1.7.3
 
 - Browse search results as poster cards with clear remote focus.

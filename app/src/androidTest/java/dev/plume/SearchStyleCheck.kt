@@ -25,6 +25,7 @@ object SearchStyleCheck {
 
         tile.background = SearchStyle.panel(activity, 16f, false)
         tile.layout(0, 0, 160, 80)
+        tile.background.setBounds(0, 0, 160, 80)
         val outline = Outline()
         tile.background.getOutline(outline)
         check(outline.canClip() && outline.radius > 0f) { "Search panel must clip artwork to rounded corners." }

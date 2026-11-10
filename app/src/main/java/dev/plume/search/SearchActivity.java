@@ -86,7 +86,7 @@ public final class SearchActivity extends Activity {
         FrameLayout root = SearchStyle.root(this);
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true); scroll.setClipToPadding(false);
-        LinearLayout page = column(); page.setPadding(dp(32), dp(22), dp(32), dp(28));
+        LinearLayout page = column(); page.setPadding(dp(32), dp(16), dp(32), dp(20));
         LinearLayout header = new LinearLayout(this); header.setGravity(Gravity.CENTER_VERTICAL);
         TextView heading = text("Search", 28, WHITE); heading.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         header.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
@@ -94,7 +94,7 @@ public final class SearchActivity extends Activity {
         header.addView(button("Settings", this::showSettings));
         page.addView(header);
         LinearLayout controls = new LinearLayout(this); controls.setGravity(Gravity.CENTER_VERTICAL);
-        controls.setPadding(0, dp(14), 0, dp(10));
+        controls.setPadding(0, dp(10), 0, dp(6));
         query = new EditText(this); query.setSingleLine(true);
         query.setHint("Movie or TV show"); query.setTextColor(WHITE); query.setHintTextColor(MUTED); query.setTextSize(19);
         query.setPadding(dp(18), 0, dp(18), 0); query.setBackground(SearchStyle.panel(this, 16f, false));
@@ -105,7 +105,7 @@ public final class SearchActivity extends Activity {
                     && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER) { search(); return true; }
             return false;
         });
-        controls.addView(query, new LinearLayout.LayoutParams(0, dp(52), 1));
+        controls.addView(query, new LinearLayout.LayoutParams(0, dp(44), 1));
         controls.addView(button("Search", this::search)); page.addView(controls);
         LinearLayout filters = new LinearLayout(this); filters.setGravity(Gravity.CENTER_VERTICAL);
         filters.addView(text("Viewing options", 13, MUTED));
@@ -121,7 +121,7 @@ public final class SearchActivity extends Activity {
             if (selected != null && availability != null) renderAvailability();
         });
         updateFilters();
-        status = text("", 13, MUTED); status.setPadding(0, dp(12), 0, dp(10));
+        status = text("", 13, MUTED); status.setPadding(0, dp(8), 0, dp(6));
         status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE); page.addView(status);
         content = column(); scroll.addView(content);
         page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -455,9 +455,9 @@ public final class SearchActivity extends Activity {
     }
     private Button button(String label, Runnable action) {
         Button button = new Button(this); button.setText(label); button.setAllCaps(false); button.setTextSize(13);
-        button.setTextColor(WHITE); button.setMinHeight(dp(42));
-        button.setBackground(background()); button.setPadding(dp(18), dp(8), dp(18), dp(8));
-        LinearLayout.LayoutParams space = new LinearLayout.LayoutParams(-2, -2); space.setMargins(dp(4), dp(5), dp(4), dp(5));
+        button.setTextColor(WHITE); button.setMinimumHeight(0); button.setMinHeight(dp(32));
+        button.setBackground(background()); button.setPadding(dp(14), dp(6), dp(14), dp(6));
+        LinearLayout.LayoutParams space = new LinearLayout.LayoutParams(-2, -2); space.setMargins(dp(4), dp(3), dp(4), dp(3));
         button.setLayoutParams(space); button.setOnClickListener(view -> action.run()); SearchStyle.focus(button); return button;
     }
     private StateListDrawable background() {
