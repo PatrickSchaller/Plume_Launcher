@@ -197,4 +197,14 @@ class HomeWatchTest {
         assertEquals(HomeWatch.KEEP, w.opened("android", "Dialog", 2_200))
         assertEquals(HomeWatch.KEEP, w.opened(amazon, amazonHome, 2_300))
     }
+
+    @Test fun aForkRecognizesItsOwnWindowsAndLeavesOfficialPlumeAlone() {
+        val fork = "dev.patrickschaller.plume"
+        val w = HomeWatch(true, fork) { emptyMap() }
+        assertNull(w.opened(fork, "dev.plume.MainActivity", 1_000))
+        assertEquals(HomeWatch.SETTINGS_WAIT_MS, w.opened(amazon, amazonHome, 2_000))
+        assertEquals(HomeWatch.KEEP, w.opened(fork, "dev.plume.search.SearchActivity", 2_100))
+        assertNull(w.opened("dev.plume", "dev.plume.MainActivity", 2_200))
+        assertEquals(0L, w.opened(amazon, amazonHome, 3_000))
+    }
 }

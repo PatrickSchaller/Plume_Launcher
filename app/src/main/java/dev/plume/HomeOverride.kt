@@ -95,7 +95,7 @@ class HomeOverride : AccessibilityService() {
     }
 
     private val handler = Handler(Looper.getMainLooper())
-    private val watch by lazy { HomeWatch(fireTv(this)) { homes } }
+    private val watch by lazy { HomeWatch(fireTv(this), packageName) { homes } }
     private var homes = emptyMap<String, Set<String>>()
     private var listening = false
     private val packageReceiver = object : BroadcastReceiver() {

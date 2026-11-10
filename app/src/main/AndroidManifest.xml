@@ -42,7 +42,9 @@
     </queries>
 
     <application
-        android:label="Plume"
+        android:label="@string/fork_app_name"
+        android:fullBackupContent="@xml/search_backup_rules"
+        android:dataExtractionRules="@xml/search_data_extraction_rules"
         android:banner="@drawable/banner"
         android:icon="@drawable/ic_launcher"
         android:usesCleartextTraffic="true"
@@ -69,6 +71,17 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name="dev.plume.search.SearchActivity"
+            android:exported="false"
+            android:enableOnBackInvokedCallback="true"
+            android:screenOrientation="landscape" />
+
+        <activity
+            android:name="dev.plume.search.LocalTvActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
 
         <activity
             android:name=".InputActivity"
@@ -109,7 +122,7 @@
         <service
             android:name=".GalleryDream"
             android:exported="true"
-            android:label="@string/gallery"
+            android:label="@string/fork_gallery_label"
             android:permission="android.permission.BIND_DREAM_SERVICE">
             <intent-filter>
                 <action android:name="android.service.dreams.DreamService" />
@@ -121,7 +134,7 @@
         <service
             android:name=".HomeOverride"
             android:exported="false"
-            android:label="@string/home_service_label"
+            android:label="@string/fork_home_service_label"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />

@@ -72,7 +72,7 @@ internal object SettingsTransfer {
                 else -> {
                     require(value is String && value.length <= 16_384 && '\u0000' !in value) { "Invalid $key" }
                     if (key == "order") require(value.isEmpty() || value.split(',').let { it.size <= 512 && it.all(pkg::matches) }) { "Invalid order" }
-                    if (key == "top_bar") require(value.split(',').all { it in setOf("wifi", "sources", "apps", "system", "plume", "power") }) { "Invalid top bar" }
+                    if (key == "top_bar") require(value.split(',').all { it in setOf("search", "wifi", "sources", "apps", "system", "plume", "power") }) { "Invalid top bar" }
                     value
                 }
             }

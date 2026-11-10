@@ -16,7 +16,7 @@ class SettingsTransferCheck(private val runner: Instrumentation) {
             check(failed) { "Invalid import succeeded" }
         }
         try {
-            val original = mapOf("theme" to "dark", "app_anim" to false, "row_hidden" to setOf("missing.app"),
+            val original = mapOf("theme" to "dark", "app_anim" to false, "row_hidden" to setOf("missing.app"), "top_bar" to "wifi,search,apps,plume",
                 "wp_every" to 15, "geo_manual" to true, "geo_city" to "London", "geo_lat" to 51.5f, "geo_lon" to -0.1f)
             SettingsTransfer.save(file, original + mapOf("lock_pin" to "export-secret", "keymap" to "local"))
             val bytes = file.readBytes()
@@ -29,6 +29,7 @@ class SettingsTransferCheck(private val runner: Instrumentation) {
             check(prefs.getInt("wp_every", 0) == 15)
             check(prefs.getFloat("geo_lat", 0f) == 51.5f)
             check(prefs.getStringSet("row_hidden", emptySet()) == setOf("missing.app"))
+            check(prefs.getString("top_bar", null) == "wifi,search,apps,plume")
             check(!prefs.contains("clock_style")) { "Missing supported setting did not reset" }
             check(prefs.getString("lock_pin", null) == "destination-secret")
             check(prefs.getBoolean("setup_shown", false))
@@ -38,6 +39,7 @@ class SettingsTransferCheck(private val runner: Instrumentation) {
             for (bad in listOf("{", "{}", "[]", bytes.toString(Charsets.UTF_8) + "garbage",
                 "{\"format\":\"plume-settings\",\"version\":2,\"settings\":{}}",
                 "{\"format\":\"plume-settings\",\"version\":1,\"settings\":{\"clock_style\":\"bad\"}}",
+                "{\"format\":\"plume-settings\",\"version\":1,\"settings\":{\"top_bar\":\"search,unknown,plume\"}}",
                 "{\"format\":\"plume-settings\",\"version\":1,\"settings\":{\"app_anim\":null}}")) {
                 file.writeText(bad)
                 fails { SettingsTransfer.restore(prefs, SettingsTransfer.load(file)) }

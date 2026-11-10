@@ -41,6 +41,14 @@ class SettingsTransferTest {
         assertTrue(SettingsTransfer.validate(emptyMap<String, Any>()).isEmpty())
     }
 
+    @Test fun transfersSearchWithTheTopBarButRejectsUnknownIcons() {
+        val order = "wifi,search,apps,plume"
+        assertEquals(mapOf("top_bar" to order), SettingsTransfer.portable(mapOf("top_bar" to order)))
+        assertThrows(IllegalArgumentException::class.java) {
+            SettingsTransfer.validate(mapOf("top_bar" to "search,unknown,plume"))
+        }
+    }
+
     @Test fun acceptsAllPublishedDisplayChoices() {
         for (style in ICON_STYLE_KEYS) assertEquals(style, SettingsTransfer.validate(mapOf("icon_style" to style))["icon_style"])
         for (align in listOf("left", "centre", "right")) assertEquals(align, SettingsTransfer.validate(mapOf("row_align" to align))["row_align"])

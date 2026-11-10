@@ -36,10 +36,10 @@
 # Settings > System > Developer options > USB debugging or Network debugging. The first connection shows
 # "Allow USB debugging?" on the TV: tick "Always allow" and accept.
 
-PKG=dev.plume
-SERVICE=$PKG/$PKG.HomeOverride
+PKG=dev.patrickschaller.plume
+SERVICE=$PKG/dev.plume.HomeOverride
 GRANT=android.permission.WRITE_SECURE_SETTINGS
-STATE=/data/local/tmp/plume-install.state
+STATE=/data/local/tmp/plume-search-install.state
 FIRE_LAUNCHER=com.amazon.tv.launcher
 
 APK= DRYRUN=0 YES=0 UNDO=0 STOCK=0 ADDR=
@@ -125,8 +125,8 @@ case $STATEDATA in *"No such file"*) STATEDATA= ;; esac
 is_listed() { printf '%s\n' "$ENABLED" | tr ':' '\n' | grep -qE "^($SERVICE|$PKG/\.HomeOverride)\$"; }
 LISTED=0
 is_listed && LISTED=1
-# "services:{" on Fire OS 7 (Android 9), "Bound services:{" later. Fire OS names a service by its label ("Plume: Home button").
-bound() { tv dumpsys accessibility | grep -E 'Bound services|^ *services:\{' | grep -qi plume; }
+# "services:{" on Fire OS 7 (Android 9), "Bound services:{" later. Match the fork's label, not official Plume beside it.
+bound() { tv dumpsys accessibility | grep -E 'Bound services|^ *services:\{' | grep -qiF 'Plume + Search: Home button'; }
 MINFUT() { tv settings get global alarm_manager_constants | tr ',' '\n' | sed -n 's/^min_futurity=//p' | head -1; }
 
 say "Found: $MAKER $MODEL, $KINDNAME"

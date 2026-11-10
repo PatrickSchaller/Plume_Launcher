@@ -1,3 +1,5 @@
+> **PatrickSchaller's Plume + Search fork:** Keeps Plume's home screen, setup, wallpapers, and controls, and adds Better TV's movie/show availability search. Installs separately as `dev.patrickschaller.plume`. See [fork setup and differences](FORK.md). The upstream README follows below.
+
 <p align="center">
   <img src="docs/plume-icon.png" alt="Plume logo" width="128">
 </p>

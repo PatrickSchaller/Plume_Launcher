@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.2
+
+- Select **Search** on the top bar to find films, shows, and viewing services.
+- Select **My services** to filter viewing options to your subscriptions.
+- Import your TMDB read token from a USB text file in **Search → Settings**.
+- Search antenna listings when your TV shares its guide.
+- Install **Plume + Search** beside the original Plume app.
+
 Plume shows the section for its own version in **Plume settings → Updates** after an update.
 After an update, a card on the home screen shows the first 6 entries. Put the 6 most interesting changes first. Put small fixes last, as plain lines.
 The build stops if `versionName` has no section here.

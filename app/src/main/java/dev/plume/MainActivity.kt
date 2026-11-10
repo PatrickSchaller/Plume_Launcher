@@ -441,8 +441,9 @@ class MainActivity : Activity() {
             if (top != oldTop || bottom != oldBottom) placeRow(animate = false) // the drop is measured from the layout
         }
 
-        // Top bar: network, All apps, Android settings, launcher settings. Round, lit on focus.
+        // Top bar: title search, network, All apps, Android settings, launcher settings. Round, lit on focus.
         for ((id, action) in listOf<Pair<Int, () -> Unit>>(
+            R.id.searchButton to { startActivity(Intent(this, dev.plume.search.SearchActivity::class.java)) },
             R.id.wifi to { unlock { openSettings(Settings.ACTION_WIFI_SETTINGS) } },
             R.id.sourcesButton to { showSources(findViewById(R.id.sourcesButton)) },
             R.id.allAppsButton to { openAllApps() },
@@ -4154,7 +4155,7 @@ class MainActivity : Activity() {
     // ---------- the top bar: hold OK on an icon to move it, hide it, or add one back ----------
 
     /** The bar's icons in their default order, with the key each is saved under. */
-    private val TOP_KEYS = linkedMapOf(R.id.wifi to "wifi", R.id.sourcesButton to "sources", R.id.allAppsButton to "apps",
+    private val TOP_KEYS = linkedMapOf(R.id.searchButton to "search", R.id.wifi to "wifi", R.id.sourcesButton to "sources", R.id.allAppsButton to "apps",
         R.id.systemSettings to "system", R.id.launcherSettings to "plume", R.id.powerButton to "power")
 
     private var movingTop: View? = null // the icon being moved, while Left and Right slide it
@@ -5871,8 +5872,8 @@ class MainActivity : Activity() {
             60 to R.string.every_60, 1440 to R.string.every_1440,
         )
         const val CHOSEN = "✓"
-        const val REPO = "aradhyas8/Plume_Launcher"
-        const val UPDATE_STATUS = "dev.plume.UPDATE_STATUS"
+        const val REPO = "PatrickSchaller/Plume_Launcher"
+        const val UPDATE_STATUS = "dev.patrickschaller.plume.UPDATE_STATUS"
         const val WRITE_EPG ="com.android.providers.tv.permission.WRITE_EPG_DATA"
         const val TV_SETTINGS = "com.android.tv.settings"
         const val HDMI = "hdmi:" // App.pkg prefix for HDMI device tiles; the rest is the TV input id

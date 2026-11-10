@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="fork_app_name" translatable="false">Plume + Search</string>
+    <string name="fork_home_service_label" translatable="false">Plume + Search: Home button</string>
+    <string name="fork_gallery_label" translatable="false">Plume + Search Gallery</string>
+    <string name="title_search">Search movies and shows</string>
+</resources>

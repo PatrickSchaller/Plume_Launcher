@@ -3,6 +3,7 @@ package dev.plume
 import android.app.Activity
 import android.app.Instrumentation
 import android.content.Context
+import android.content.ComponentName
 import android.content.Intent
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
@@ -18,6 +19,7 @@ class GalleryPreviewTest(private val runner: Instrumentation) {
         val prefs = targetContext.getSharedPreferences("home", Context.MODE_PRIVATE)
         val setup = prefs.all["setup_shown"] as? Boolean
         val previous = Settings.Secure.getString(targetContext.contentResolver, "screensaver_components")
+        val galleryComponent = ComponentName(targetContext, GalleryDream::class.java).flattenToString()
         val secureKeys = listOf("screensaver_enabled", "screensaver_default_component", "contextual_screen_off_timeout")
         val settings = secureKeys.associateWith { Settings.Secure.getString(targetContext.contentResolver, it) }
         val timeout = Settings.System.getString(targetContext.contentResolver, "screen_off_timeout")
@@ -27,8 +29,8 @@ class GalleryPreviewTest(private val runner: Instrumentation) {
         var failure: String? = null
         try {
             prefs.edit().putBoolean("setup_shown", true).commit()
-            shell("settings put secure screensaver_components dev.plume/dev.plume.GalleryDream")
-            shell("pm grant dev.plume android.permission.READ_TV_LISTINGS")
+            shell("settings put secure screensaver_components $galleryComponent")
+            shell("pm grant ${targetContext.packageName} android.permission.READ_TV_LISTINGS")
             home = startActivitySync(Intent(targetContext, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             val launcher = home
             await { launcher.hasWindowFocus() }
@@ -51,7 +53,7 @@ class GalleryPreviewTest(private val runner: Instrumentation) {
                 await { shown.isFinishing && launcher.hasWindowFocus() }
                 waitForIdleSync()
                 if (it == 0) await { launcher.findViewById<View>(R.id.settingsScrim).isShown }
-                check(Settings.Secure.getString(targetContext.contentResolver, "screensaver_components") == "dev.plume/dev.plume.GalleryDream")
+                check(Settings.Secure.getString(targetContext.contentResolver, "screensaver_components") == galleryComponent)
                 check(secureKeys.associateWith { key -> Settings.Secure.getString(targetContext.contentResolver, key) } == settings)
                 check(Settings.System.getString(targetContext.contentResolver, "screen_off_timeout") == timeout)
             }

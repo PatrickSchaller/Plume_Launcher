@@ -15,8 +15,8 @@ chmod +x "$WORK/bin/adb" "$WORK/bin/sleep"
 PATH=$WORK/bin:$PATH
 FAKE_STATE=$WORK/tv.json
 export PATH FAKE_STATE
-STATE=/data/local/tmp/plume-install.state
-SVC=dev.plume/dev.plume.HomeOverride
+STATE=/data/local/tmp/plume-search-install.state
+SVC=dev.patrickschaller.plume/dev.plume.HomeOverride
 OTHER=com.example/com.example.Other
 N=0 BAD=0
 
@@ -186,6 +186,11 @@ run --disable-stock-launcher
 check "Google TV refuses to turn its launcher off" '[ $RC != 0 ] && has "$OUT" "Fire TV only" && [ -z "$(st enabled)" ]'
 
 # ---- the questions the script asks -------------------------------------------------------------------------------
+new google '{"enabled": "dev.plume/dev.plume.HomeOverride"}'
+FAKE_FAIL="settings put secure enabled_accessibility_services"; export FAKE_FAIL
+run
+check "official Plume cannot stand in for the fork service" '[ $RC = 1 ] && has "$OUT" "does not show Plume" && [ "$(st enabled)" = "dev.plume/dev.plume.HomeOverride" ]'
+
 new fire7 '{"installed": false}'
 run
 check "Plume not installed and no -a: the script stops and changes nothing" '[ $RC != 0 ] && has "$OUT" "not installed" && [ -z "$(st enabled)" ]'
