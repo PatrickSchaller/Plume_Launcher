@@ -80,7 +80,7 @@ final class TmdbCatalog {
             if (id <= 0 || name.isEmpty()) continue;
             String date = string(row, "movie".equals(kind) ? "release_date" : "first_air_date");
             titles.add(new Title(id, kind, name, date.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}") ? date.substring(0, 4) : "",
-                    string(row, "overview"), string(row, "poster_path")));
+                    string(row, "overview"), imagePath(row, "poster_path"), imagePath(row, "backdrop_path")));
         }
         return titles;
     }
@@ -107,7 +107,16 @@ final class TmdbCatalog {
     }
 
     private static Provider parseProvider(JSONObject row) {
-        return new Provider(positiveId(row, "provider_id"), string(row, "provider_name"));
+        return new Provider(positiveId(row, "provider_id"), string(row, "provider_name"), imagePath(row, "logo_path"));
+    }
+
+    private static String imagePath(JSONObject row, String key) {
+        String value = string(row, key);
+        return validImagePath(value) ? value : "";
+    }
+
+    static boolean validImagePath(String path) {
+        return path != null && path.matches("/[A-Za-z0-9_-][A-Za-z0-9._-]*");
     }
 
     private static String string(JSONObject row, String key) {
@@ -145,20 +154,33 @@ final class TmdbCatalog {
     }
 
     static Bitmap poster(String path) throws IOException {
-        if (!path.matches("/[A-Za-z0-9._-]+")) return null;
-        HttpURLConnection connection = open("https://image.tmdb.org/t/p/w185" + path);
+        return image(path, "w342", 400, 600, 1024 * 1024, Bitmap.Config.RGB_565);
+    }
+
+    static Bitmap backdrop(String path) throws IOException {
+        return image(path, "w1280", 1280, 720, 3 * 1024 * 1024, Bitmap.Config.RGB_565);
+    }
+
+    static Bitmap providerLogo(String path) throws IOException {
+        return image(path, "w92", 128, 128, 512 * 1024, Bitmap.Config.ARGB_8888);
+    }
+
+    private static Bitmap image(String path, String size, int maxWidth, int maxHeight, int maxBytes, Bitmap.Config config) throws IOException {
+        if (!validImagePath(path)) return null;
+        HttpURLConnection connection = open("https://image.tmdb.org/t/p/" + size + path);
         try {
             if (connection.getResponseCode() != 200) return null;
             byte[] bytes;
-            try (InputStream input = connection.getInputStream()) { bytes = read(input, 1024 * 1024); }
+            try (InputStream input = connection.getInputStream()) { bytes = read(input, maxBytes); }
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
             BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
             if (options.outWidth <= 0 || options.outHeight <= 0 || options.outWidth > 10000 || options.outHeight > 10000) return null;
             options.inSampleSize = 1;
-            while (options.outWidth / options.inSampleSize > 400 || options.outHeight / options.inSampleSize > 600) options.inSampleSize *= 2;
+            while ((options.outWidth + options.inSampleSize - 1) / options.inSampleSize > maxWidth
+                    || (options.outHeight + options.inSampleSize - 1) / options.inSampleSize > maxHeight) options.inSampleSize *= 2;
             options.inJustDecodeBounds = false;
-            options.inPreferredConfig = Bitmap.Config.RGB_565;
+            options.inPreferredConfig = config;
             return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
         } finally { connection.disconnect(); }
     }
@@ -185,15 +207,19 @@ final class TmdbCatalog {
 
     static final class Title {
         final int id;
-        final String kind, name, year, overview, poster;
+        final String kind, name, year, overview, poster, backdrop;
         Title(int id, String kind, String name, String year, String overview, String poster) {
-            this.id = id; this.kind = kind; this.name = name; this.year = year; this.overview = overview; this.poster = poster;
+            this(id, kind, name, year, overview, poster, "");
+        }
+        Title(int id, String kind, String name, String year, String overview, String poster, String backdrop) {
+            this.id = id; this.kind = kind; this.name = name; this.year = year; this.overview = overview; this.poster = poster; this.backdrop = backdrop;
         }
         String subtitle() { return ("tv".equals(kind) ? "TV series" : "Movie") + (year.isEmpty() ? "" : " · " + year); }
     }
     static final class Provider {
-        final int id; final String name;
-        Provider(int id, String name) { this.id = id; this.name = name; }
+        final int id; final String name, logo;
+        Provider(int id, String name) { this(id, name, ""); }
+        Provider(int id, String name, String logo) { this.id = id; this.name = name; this.logo = logo; }
     }
     static final class Offer {
         final Provider provider; final String kind;

@@ -79,6 +79,11 @@
             android:screenOrientation="landscape" />
 
         <activity
+            android:name="dev.plume.search.ServicesActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <activity
             android:name="dev.plume.search.LocalTvActivity"
             android:exported="false"
             android:screenOrientation="landscape" />

@@ -29,15 +29,6 @@ public final class SearchRules {
     }
 
     public static String packageForProvider(String name) {
-        switch (name) {
-            case "Netflix": return "com.netflix.ninja";
-            case "Amazon Prime Video": return "com.amazon.amazonvideo.livingroom";
-            case "Disney Plus": return "com.disney.disneyplus";
-            case "Hulu": return "com.hulu.livingroomplus";
-            case "Apple TV":
-            case "Apple TV Plus": return "com.apple.atve.androidtv.appletv";
-            case "Paramount Plus": return "com.cbs.ott";
-            default: return null;
-        }
+        return ServiceChoices.packageForProvider(name);
     }
 }

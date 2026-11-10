@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.3
+
+- Browse search results as poster cards with clear remote focus.
+- Open a title for large artwork and grouped viewing options.
+- Find installed and popular services first in **My services**.
+- Search the full service catalog when you need more choices.
+- Keep free options separate from subscription and rental listings.
+
 ## 1.7.2
 
 - Select **Search** on the top bar to find films, shows, and viewing services.

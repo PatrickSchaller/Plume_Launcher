@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="services_cancel" type="id" />
+    <item name="services_save" type="id" />
+    <item name="services_filter" type="id" />
+</resources>

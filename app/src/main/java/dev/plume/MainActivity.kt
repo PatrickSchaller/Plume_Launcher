@@ -443,7 +443,10 @@ class MainActivity : Activity() {
 
         // Top bar: title search, network, All apps, Android settings, launcher settings. Round, lit on focus.
         for ((id, action) in listOf<Pair<Int, () -> Unit>>(
-            R.id.searchButton to { startActivity(Intent(this, dev.plume.search.SearchActivity::class.java)) },
+            R.id.searchButton to {
+                SearchStyle.capture(findViewById<ImageView>(R.id.wallpaper).drawable, glass.blur)
+                startActivity(Intent(this, dev.plume.search.SearchActivity::class.java))
+            },
             R.id.wifi to { unlock { openSettings(Settings.ACTION_WIFI_SETTINGS) } },
             R.id.sourcesButton to { showSources(findViewById(R.id.sourcesButton)) },
             R.id.allAppsButton to { openAllApps() },

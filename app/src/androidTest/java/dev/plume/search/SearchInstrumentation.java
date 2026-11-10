@@ -41,6 +41,8 @@ public final class SearchInstrumentation extends Instrumentation {
             searchFixtures();
             availabilityFixtures();
             broadcastRules();
+            checks += ArtworkChecks.run();
+            checks += ServicesInstrumentationCheck.run(this);
             tokenFieldIsMasked();
             launcherSearchNavigation();
             results.putString("stream", "\nPassed " + checks + " search and launcher-navigation checks.\n");
@@ -195,6 +197,8 @@ public final class SearchInstrumentation extends Instrumentation {
             check(search instanceof SearchActivity, "The Plume Search button did not open title search.");
             Activity searchActivity = search;
             await(searchActivity::hasWindowFocus, "Search did not receive remote focus.");
+            runOnMainSync(() -> dev.plume.SearchStyleCheck.run(searchActivity));
+            checks += SearchVisualCheck.run(this, (SearchActivity) searchActivity);
             selectedTitleBackReturnsToResults((SearchActivity) searchActivity);
             sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
             await(() -> searchActivity.isFinishing() && homeActivity.hasWindowFocus(),
