@@ -87,6 +87,9 @@ public final class SearchInstrumentation extends Instrumentation {
         check(series.poster.isEmpty(), "JSON null poster must remain absent.");
         check(undated.year.isEmpty(), "An invalid release date must not become a displayed year.");
         check(TmdbCatalog.parseTitles(new JSONObject()).isEmpty(), "Missing search results must be empty.");
+        List<TmdbCatalog.Title> discover = TmdbCatalog.parseTitles(new JSONObject("{\"results\":[{\"id\":44,\"title\":\"Discovery fixture\",\"release_date\":\"1994-01-02\"}]}"), "movie");
+        check(discover.size() == 1 && "movie".equals(discover.get(0).kind) && "1994".equals(discover.get(0).year),
+                "Discover results without media_type must keep their endpoint's kind.");
     }
 
     private void availabilityFixtures() throws Exception {
@@ -229,6 +232,24 @@ public final class SearchInstrumentation extends Instrumentation {
                             && homeActivity.findViewById(R.id.allAppsButton).isShown()
                             && homeActivity.findViewById(R.id.launcherSettings).isShown(),
                     "Returning from search hid existing Plume controls."));
+            runOnMainSync(() -> homeActivity.findViewById(R.id.allAppsButton).performClick());
+            waitForIdleSync();
+            runOnMainSync(() -> {
+                View store = homeActivity.findViewById(R.id.findApps);
+                check(store.isShown() && store.requestFocus(), "App drawer must offer a focusable Find apps shortcut.");
+            });
+            SearchVisualCheck.shot(this, "plume-apps-preview.png");
+            android.content.IntentFilter storeFilter = new android.content.IntentFilter(Intent.ACTION_MAIN);
+            storeFilter.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
+            ActivityMonitor storeMonitor = addMonitor(storeFilter, new ActivityResult(Activity.RESULT_CANCELED, null), true);
+            try {
+                runOnMainSync(() -> homeActivity.findViewById(R.id.findApps).performClick());
+                waitForIdleSync();
+                check(storeMonitor.getHits() == 1, "Find apps did not dispatch the installed TV app store.");
+            } finally { removeMonitor(storeMonitor); }
+            sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+            waitForIdleSync();
+            check(homeActivity.findViewById(R.id.allApps).getVisibility() == View.GONE, "Back from the drawer must return home.");
         } finally {
             removeMonitor(monitor);
             Activity lastSearch = search, lastLauncher = launcher;

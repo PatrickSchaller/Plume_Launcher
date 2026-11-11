@@ -12,7 +12,7 @@ Build and test results are recorded in [verification](docs/search-fork-verificat
 
 ## Install and try
 
-This build is version **1.7.4**, labeled **Plume + Search**, with application ID `dev.patrickschaller.plume`. It installs alongside official Plume and Better TV; each app has separate settings. Install the APK from USB and open **Plume + Search** from the TV's Apps screen.
+This build is version **1.7.5**, labeled **Plume + Search**, with application ID `dev.patrickschaller.plume`. It installs alongside official Plume and Better TV; each app has separate settings. Install the APK from USB and open **Plume + Search** from the TV's Apps screen.
 
 First try it as a normal app. Before testing its Home-button setup, turn off Better TV's Home button fix and official Plume's Home service so only the selected launcher's service handles Home. The fork keeps Plume's setup process; actual TCL restart behavior still needs checking. No stock launcher is disabled by this change.
 
@@ -57,4 +57,14 @@ My services starts with installed recognizable apps, or Popular if none match. I
 Results are a remote-navigable poster grid. Title details show backdrop art and separate Subscription, Free to watch, and Rent or buy tiles. Free offers may require an account; service buttons open an installed app or the source's availability details. Back restores the previously selected poster. Artwork failure leaves usable labeled placeholders.
 
 
-The 1.7.4 follow-up passes 144 unit tests and 70 Android TV UI checks in each of light and dark mode. It also fixes poster-label clipping. See [verified UI results and screenshots](docs/search-ui-1.7.4.md). Live TMDB data and physical TCL behavior remain separate hardware checks.
+## Search and app access in 1.7.5
+
+Title details place artwork beside viewing options. Matching selected services appear first and are named in the fixed header; no initial scroll is needed to find the first option. Search and My Services use TV-safe margins and focus outlines without zooming cards into clipped edges. **All apps → Find apps** opens Google Play, including on devices where its icon is absent from the installed-app grid.
+
+Search accepts simple genre/date phrases, such as **funny movies from the ’90s**, **sci-fi shows from 2020**, **family movies**, or **movies from 1994**. The header shows the interpreted filters. This uses TMDB Discover, not an AI model: arbitrary plot descriptions, actor combinations, conversational follow-ups, and general mood requests are not supported. Unrecognized requests remain ordinary title searches. TV date filters use the series' first-air date, and TV sci-fi/fantasy and action/adventure follow TMDB's combined genre categories.
+
+Clear glass needs a still picture. Plume deliberately uses Frosted for video wallpapers; a plain background has no image to show through glass. The Style settings now explain these conditions even when Clear was not the selected style.
+
+Google TV can use services selected on a Google profile and supported linked streaming accounts ([Google's documentation](https://support.google.com/googletv/answer/10059392)). This fork detects installed apps and uses your explicit selections; it does not read Gmail or infer paid subscriptions. Google Play Billing only returns purchases made within the calling app ([BillingClient](https://developer.android.com/reference/com/android/billingclient/api/BillingClient)).
+
+Version 1.7.5 passes 146 unit tests and 79 Android TV UI checks in each of light and dark mode. See [verified UI results and screenshots](docs/search-ui-1.7.5.md). Live TMDB data and physical TCL behavior remain separate hardware checks.

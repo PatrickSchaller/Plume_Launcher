@@ -215,6 +215,9 @@
     <string name="theme_dark">Dark</string>
     <string name="theme_auto">Auto</string>
     <string name="glass_clear_video">Clear glass needs a still wallpaper. With a video, Plume uses Frosted.</string>
+    <string name="glass_plain_help">Glass needs a picture behind it. Choose a still wallpaper to see Clear or Frosted glass.</string>
+    <string name="find_apps">Find apps</string>
+    <string name="app_store_unavailable">Google Play Store is unavailable. Open the TV’s Apps tab to find and install apps.</string>
     <string name="auto_note_sun">Auto is light from sunrise to sunset in %1$s. Today: %2$s to %3$s.</string>
     <string name="auto_note_up">Auto stays light today: the sun does not set in %1$s.</string>
     <string name="auto_note_down">Auto stays dark today: the sun does not rise in %1$s.</string>

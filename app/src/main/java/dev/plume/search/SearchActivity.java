@@ -62,7 +62,8 @@ public final class SearchActivity extends Activity {
     private EditText query;
     private CheckBox onlyMine;
     private Button everywhere, myServices;
-    private LinearLayout content;
+    private LinearLayout content, stage;
+    private String resultLabel = "";
     private TextView status;
     private List<TmdbCatalog.Title> titles = new ArrayList<>();
     private TmdbCatalog.Title selected;
@@ -84,9 +85,8 @@ public final class SearchActivity extends Activity {
         BACKGROUND = SearchStyle.dark(this) ? Color.rgb(13, 15, 19) : Color.rgb(240, 242, 245);
         FOCUS = WHITE;
         FrameLayout root = SearchStyle.root(this);
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true); scroll.setClipToPadding(false);
-        LinearLayout page = column(); page.setPadding(dp(32), dp(16), dp(32), dp(20));
+        LinearLayout page = column(); page.setPadding(dp(48), dp(27), dp(48), dp(27));
+        page.setClipChildren(false);
         LinearLayout header = new LinearLayout(this); header.setGravity(Gravity.CENTER_VERTICAL);
         TextView heading = text("Search", 28, WHITE); heading.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         header.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
@@ -96,7 +96,7 @@ public final class SearchActivity extends Activity {
         LinearLayout controls = new LinearLayout(this); controls.setGravity(Gravity.CENTER_VERTICAL);
         controls.setPadding(0, dp(10), 0, dp(6));
         query = new EditText(this); query.setSingleLine(true);
-        query.setHint("Movie or TV show"); query.setTextColor(WHITE); query.setHintTextColor(MUTED); query.setTextSize(19);
+        query.setHint("Title, or funny movies from the ’90s"); query.setTextColor(WHITE); query.setHintTextColor(MUTED); query.setTextSize(19);
         query.setPadding(dp(18), 0, dp(18), 0); query.setBackground(SearchStyle.panel(this, 16f, false));
         query.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         query.setImeOptions(EditorInfo.IME_ACTION_SEARCH); query.setFilters(new InputFilter[]{new InputFilter.LengthFilter(200)});
@@ -123,8 +123,9 @@ public final class SearchActivity extends Activity {
         updateFilters();
         status = text("", 13, MUTED); status.setPadding(0, dp(8), 0, dp(6));
         status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE); page.addView(status);
-        content = column(); scroll.addView(content);
-        page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        stage = new LinearLayout(this); stage.setClipChildren(false);
+        page.addView(stage, new LinearLayout.LayoutParams(-1, 0, 1));
+        resetContent();
         root.addView(page, new FrameLayout.LayoutParams(-1, -1)); setContentView(root);
         if (state != null) query.setText(state.getString("query", ""));
         intro();
@@ -143,12 +144,17 @@ public final class SearchActivity extends Activity {
         startActivity(new Intent(this, LocalTvActivity.class).putExtra("query", selected == null ? query.getText().toString().trim() : selected.name));
     }
     private void intro() {
-        selected = null; availability = null; titles.clear(); content.removeAllViews();
+        selected = null; availability = null; titles.clear(); resetContent();
         status.setText(token().isEmpty() ? "Set up TMDB in Settings to start searching." : "Movies and shows · United States");
         LinearLayout empty = column(); empty.setPadding(dp(26), dp(25), dp(26), dp(25));
         empty.setBackground(SearchStyle.panel(this, 24f, false));
         empty.addView(text("Find a movie or show", 26, WHITE));
         empty.addView(text("See your subscription options, free services and rentals together.", 16, MUTED));
+        empty.addView(text("Search a title, or use a genre with a year or decade. Try:", 14, MUTED));
+        LinearLayout examples = new LinearLayout(this);
+        for (String example : new String[]{"Funny movies from the ’90s", "Sci-fi shows from 2020"})
+            examples.addView(button(example, () -> { query.setText(example); search(); }));
+        empty.addView(examples);
         empty.addView(button(token().isEmpty() ? "Set up search" : "Choose your services", token().isEmpty() ? this::showSettings : this::chooseServices));
         content.addView(empty);
     }
@@ -158,12 +164,16 @@ public final class SearchActivity extends Activity {
         if (token().isEmpty()) { showSettings(); return; }
         InputMethodManager keyboard = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         if (keyboard != null) keyboard.hideSoftInputFromWindow(query.getWindowToken(), 0);
-        selected = null; availability = null; lastTitleId = 0; titles.clear(); content.removeAllViews(); status.setText("Searching…");
+        selected = null; availability = null; lastTitleId = 0; titles.clear(); resetContent();
+        DiscoveryQuery discovery = DiscoveryQuery.parse(term);
+        resultLabel = discovery == null ? "" : discovery.label;
+        status.setText(resultLabel.isEmpty() ? "Searching titles…" : resultLabel + " · Searching…");
         TmdbCatalog api = catalog(); request(() -> api.search(term), result -> { titles = result; showResults(); }, this::showError);
     }
     private void showResults() {
-        selected = null; content.removeAllViews();
-        status.setText(titles.isEmpty() ? "No matches. Try another title." : titles.size() + " matches · Choose a title");
+        selected = null; resetContent();
+        status.setText(titles.isEmpty() ? "No matches. Try a title, genre + movies/shows, or a different year."
+                : (resultLabel.isEmpty() ? titles.size() + " matches" : resultLabel) + " · Choose a title");
         GridLayout grid = new GridLayout(this); int columns = columns(160, 5); grid.setColumnCount(columns);
         grid.setClipChildren(false); grid.setClipToPadding(false);
         int width = tileWidth(columns); View first = null, previous = null;
@@ -200,52 +210,78 @@ public final class SearchActivity extends Activity {
     }
     private void showAvailability(TmdbCatalog.Title title, int seasonNumber) {
         selected = title; lastTitleId = title.id; season = seasonNumber; availability = null;
-        content.removeAllViews(); status.setText("Checking viewing options…");
+        detailContent(title); status.setText("Checking viewing options…");
+        content.addView(text("Finding where to watch…", 20, WHITE));
         TmdbCatalog api = catalog(); request(() -> api.availability(title, seasonNumber), result -> {
             availability = result; availabilityCheckedAt = System.currentTimeMillis(); renderAvailability();
         }, this::showError);
-        addHero(title);
     }
-    private void addHero(TmdbCatalog.Title title) {
+    private FrameLayout hero(TmdbCatalog.Title title) {
         FrameLayout hero = new FrameLayout(this); hero.setBackground(SearchStyle.panel(this, 24f, false)); hero.setClipToOutline(true);
-        hero.setFocusable(true); hero.setContentDescription(title.name + ", " + title.subtitle());
+        hero.setContentDescription(title.name + ", " + title.subtitle());
         ImageView backdrop = new ImageView(this); backdrop.setScaleType(ImageView.ScaleType.CENTER_CROP);
         hero.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
-        View shade = new View(this); shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{0xF20A0C11, 0xB00A0C11, 0x800A0C11})); hero.addView(shade, new FrameLayout.LayoutParams(-1, -1));
-        ImageView poster = new ImageView(this); poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        FrameLayout.LayoutParams posterSpace = new FrameLayout.LayoutParams(dp(138), dp(207));
-        posterSpace.leftMargin = dp(20); posterSpace.topMargin = dp(20); hero.addView(poster, posterSpace);
-        LinearLayout words = column(); TextView name = text(title.name, 30, Color.WHITE);
+        View shade = new View(this); shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x100A0C11, 0xB00A0C11, 0xFF0A0C11})); hero.addView(shade, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout words = column(); TextView name = text(title.name, 24, Color.WHITE);
         name.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL)); name.setMaxLines(2); name.setEllipsize(TextUtils.TruncateAt.END);
         words.addView(name); words.addView(text(title.subtitle() + (season < 0 ? "" : " · Season " + season), 14, 0xFFD3D8E0));
-        TextView overview = text(title.overview.isEmpty() ? "Viewing options below." : title.overview, 15, 0xFFE3E6EB);
-        overview.setMaxLines(4); overview.setEllipsize(TextUtils.TruncateAt.END); words.addView(overview);
-        FrameLayout.LayoutParams wordSpace = new FrameLayout.LayoutParams(-1, -2); wordSpace.leftMargin = dp(182); wordSpace.rightMargin = dp(28); wordSpace.topMargin = dp(20);
-        hero.addView(words, wordSpace); content.addView(hero, new LinearLayout.LayoutParams(-1, dp(248)));
-        hero.requestFocus();
+        FrameLayout.LayoutParams wordSpace = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
+        wordSpace.setMargins(dp(18), dp(12), dp(18), dp(14)); hero.addView(words, wordSpace);
         int ticket = generation;
-        loadImage(poster, "poster:" + title.poster, () -> TmdbCatalog.poster(title.poster), ticket);
         loadImage(backdrop, "backdrop:" + title.backdrop, () -> TmdbCatalog.backdrop(title.backdrop), ticket);
+        return hero;
+    }
+    private ScrollView scroll(LinearLayout body) {
+        ScrollView scroll = new ScrollView(this); scroll.setFillViewport(true);
+        scroll.setClipChildren(false); scroll.setClipToPadding(false); scroll.setVerticalScrollBarEnabled(false);
+        body.setPadding(dp(8), dp(8), dp(8), dp(8)); body.setClipChildren(false);
+        scroll.addView(body); return scroll;
+    }
+    private void resetContent() {
+        stage.removeAllViews(); content = column();
+        stage.addView(scroll(content), new LinearLayout.LayoutParams(-1, -1));
+    }
+    private void detailContent(TmdbCatalog.Title title) {
+        stage.removeAllViews();
+        LinearLayout about = column();
+        about.addView(hero(title), new LinearLayout.LayoutParams(-1, dp(164)));
+        about.addView(button("Back to results", this::showResults));
+        if ("tv".equals(title.kind)) about.addView(button(season < 0 ? "Choose season" : "Season " + season, this::chooseSeason));
+        about.addView(button("Antenna airings", this::openAntenna));
+        about.addView(text(title.overview, 14, MUTED));
+        LinearLayout.LayoutParams left = new LinearLayout.LayoutParams(0, -1, .38f); left.rightMargin = dp(16);
+        stage.addView(scroll(about), left);
+        content = column(); stage.addView(scroll(content), new LinearLayout.LayoutParams(0, -1, .62f));
     }
     private void renderAvailability() {
-        content.removeAllViews(); status.setText("Where to watch · United States"); addHero(selected);
-        LinearLayout actions = new LinearLayout(this); actions.setPadding(0, dp(12), 0, dp(5));
-        if ("tv".equals(selected.kind)) actions.addView(button(season < 0 ? "Choose season" : "Season " + season, this::chooseSeason));
-        actions.addView(button("Antenna airings", this::openAntenna));
-        actions.addView(button("Back to results", this::showResults)); content.addView(actions);
-        Set<String> mine = services(); boolean filtered = onlyMine.isChecked(); int shown = 0; View first = null;
-        String[][] groups = {{"Subscription", "flatrate"}, {"Free to watch", "free", "ads"}, {"Rent or buy", "rent", "buy"}};
+        detailContent(selected);
+        Set<String> mine = services();
+        Set<String> matching = new java.util.LinkedHashSet<>();
+        for (TmdbCatalog.Offer offer : availability.offers)
+            if (mine.contains(Integer.toString(offer.provider.id))) matching.add(offer.provider.name);
+        status.setText(!availability.hasUs ? "US availability unknown"
+                : mine.isEmpty() ? "Choose My services to personalize viewing options · United States"
+                : matching.isEmpty() ? "No matches on your selected services · United States"
+                : "On your services: " + TextUtils.join(", ", matching));
+        status.setMaxLines(1); status.setEllipsize(TextUtils.TruncateAt.END);
+        content.addView(text("Where to watch", 22, WHITE));
+        boolean filtered = onlyMine.isChecked(); int shown = 0; View first = null;
+        String[][] groups = {{"Your selected services", "flatrate", "free", "ads", "rent", "buy"},
+                {"Other subscriptions", "flatrate"}, {"Free to watch", "free", "ads"}, {"Rent or buy", "rent", "buy"}};
         for (String[] group : groups) {
             List<TmdbCatalog.Offer> offers = new ArrayList<>();
             for (TmdbCatalog.Offer offer : availability.offers) {
                 boolean kind = false; for (int i = 1; i < group.length; i++) kind |= group[i].equals(offer.kind);
-                if (kind && SearchRules.showProvider(offer.provider.id, filtered, mine)) offers.add(offer);
+                boolean isMine = mine.contains(Integer.toString(offer.provider.id));
+                boolean groupMatches = "Your selected services".equals(group[0]) == isMine;
+                if (kind && groupMatches && SearchRules.showProvider(offer.provider.id, filtered, mine)) offers.add(offer);
             }
             if (offers.isEmpty()) continue;
-            TextView label = text(group[0], 19, WHITE); label.setPadding(0, dp(16), 0, dp(9)); content.addView(label);
+            TextView label = text(group[0], 16, WHITE); label.setPadding(0, dp(6), 0, dp(6)); content.addView(label);
             if ("Free to watch".equals(group[0])) content.addView(text("May need a free account. Ads may apply.", 13, MUTED));
-            GridLayout grid = new GridLayout(this); int columns = columns(205, 4); grid.setColumnCount(columns);
+            GridLayout grid = new GridLayout(this); int columns = columns(225, 2); grid.setColumnCount(columns);
+            grid.setClipChildren(false); grid.setClipToPadding(false);
             int width = tileWidth(columns);
             for (TmdbCatalog.Offer offer : offers) {
                 LinearLayout card = new LinearLayout(this); card.setGravity(Gravity.CENTER_VERTICAL); card.setPadding(dp(14), dp(12), dp(12), dp(12));
@@ -276,9 +312,13 @@ public final class SearchActivity extends Activity {
         content.addView(text("App buttons open the service, not this exact title. Confirm your plan and access there.", 12, MUTED));
         if (!availability.link.isEmpty()) content.addView(button("More viewing details", () -> openWeb(availability.link)));
         content.addView(text("JustWatch / TMDB · Updated " + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(availabilityCheckedAt)), 11, MUTED));
+        if (first != null) first.requestFocus();
     }
-    private int availableWidth() { return Math.round(getResources().getDisplayMetrics().widthPixels / getResources().getDisplayMetrics().density) - 64; }
-    private int columns(int minimumWidth, int maximum) { return Math.max(2, Math.min(maximum, availableWidth() / minimumWidth)); }
+    private int availableWidth() {
+        int width = Math.round(getResources().getDisplayMetrics().widthPixels / getResources().getDisplayMetrics().density) - 96;
+        return (selected == null ? width : Math.round((width - 16) * .62f)) - 16;
+    }
+    private int columns(int minimumWidth, int maximum) { return Math.max(1, Math.min(maximum, availableWidth() / minimumWidth)); }
     private int tileWidth(int columns) { return (availableWidth() - 14 * columns) / columns; }
     private void loadImage(ImageView view, String key, Callable<Bitmap> work, int ticket) {
         if (key.endsWith(":")) return;

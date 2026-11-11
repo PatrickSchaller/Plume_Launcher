@@ -2713,7 +2713,8 @@ class MainActivity : Activity() {
                 when {
                     k == R.string.theme && theme == "auto" -> autoNote()
                     k == R.string.theme && theme == "wallpaper" -> getString(R.string.help_theme_wallpaper)
-                    k == R.string.glass && glassStyle() == GlassStyle.CLEAR && currentWallpaper().startsWith("video:") -> getString(R.string.glass_clear_video)
+                    k == R.string.glass && currentWallpaper().startsWith("video:") -> getString(R.string.glass_clear_video)
+                    k == R.string.glass && Backdrop.of(currentWallpaper()) == Backdrop.PLAIN -> getString(R.string.glass_plain_help)
                     else -> ROW_HELP[k]?.let { getString(it) }
                 }
             }
@@ -4500,6 +4501,12 @@ class MainActivity : Activity() {
     // ---------- all apps ----------
 
     private fun openAllApps() {
+        SearchStyle.capture(findViewById<ImageView>(R.id.wallpaper).drawable, glass.blur)
+        findViewById<TextView>(R.id.findApps).apply {
+            setTextColor(fg)
+            background = SearchStyle.panel(this@MainActivity, 18f, false)
+            setOnClickListener { openAppStore() }
+        }
         allAppsGrid.removeAllViews()
         val gap = dp(10)
         val width = (resources.displayMetrics.widthPixels - dp(96) - gap * 5) / 6
@@ -4516,7 +4523,23 @@ class MainActivity : Activity() {
         // background covers it anyway.
         findViewById<View>(R.id.content).visibility = if (glassActive()) View.INVISIBLE else View.VISIBLE
         homeFocusable(false)
-        allAppsGrid.getChildAt(0)?.requestFocus()
+        (allAppsGrid.getChildAt(0) ?: findViewById<View>(R.id.findApps)).requestFocus()
+    }
+
+    private fun openAppStore() {
+        val store = "com.android.vending"
+        val intents = listOfNotNull(
+            packageManager.getLeanbackLaunchIntentForPackage(store),
+            packageManager.getLaunchIntentForPackage(store),
+            Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=apps&c=apps")).setPackage(store),
+        )
+        for (intent in intents) try {
+            startActivity(intent)
+            return
+        } catch (_: ActivityNotFoundException) {
+        } catch (_: SecurityException) {
+        }
+        toast(getString(R.string.app_store_unavailable), long = true)
     }
 
     private fun closeAllApps() {

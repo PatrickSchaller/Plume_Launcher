@@ -37,7 +37,10 @@ public final class ServicesInstrumentationCheck {
         int[] checks = {0};
         try {
             activity = open(test, fixture);
+            ServicesActivity focusActivity = activity;
+            test.runOnMainSync(() -> focusActivity.findViewById(android.R.id.content).findViewWithTag("netflix").requestFocus());
             SearchVisualCheck.shot(test, "plume-services-preview.png");
+            test.runOnMainSync(() -> SearchVisualCheck.assertVisible(focusActivity.getCurrentFocus()));
             ServicesActivity cancelActivity = activity;
             test.runOnMainSync(() -> {
                 View netflix = cancelActivity.findViewById(android.R.id.content).findViewWithTag("netflix");

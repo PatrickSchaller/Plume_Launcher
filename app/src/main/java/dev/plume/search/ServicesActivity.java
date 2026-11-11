@@ -56,7 +56,8 @@ public final class ServicesActivity extends Activity {
         draft = new HashSet<>(preferences.getStringSet("services", new HashSet<>()));
         FrameLayout root = SearchStyle.root(this);
         LinearLayout page = column();
-        page.setPadding(dp(40), dp(24), dp(40), dp(20));
+        page.setPadding(dp(48), dp(27), dp(48), dp(27));
+        page.setClipChildren(false);
         root.addView(page, new FrameLayout.LayoutParams(-1, -1));
 
         LinearLayout heading = row();
@@ -98,7 +99,9 @@ public final class ServicesActivity extends Activity {
         page.addView(status);
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
+        scroll.setClipChildren(false); scroll.setClipToPadding(false);
         body = column();
+        body.setPadding(dp(8), dp(8), dp(8), dp(8)); body.setClipChildren(false);
         scroll.addView(body);
         page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         filter.addTextChangedListener(new TextWatcher() {
@@ -184,8 +187,9 @@ public final class ServicesActivity extends Activity {
         if (shown.isEmpty()) body.addView(label(term.isEmpty() ? "No services here yet. Try Popular or All services."
                 : "No matching services. Try another name.", 16, true));
         GridLayout grid = new GridLayout(this);
+        grid.setClipChildren(false); grid.setClipToPadding(false);
         grid.setColumnCount(3);
-        int width = (getResources().getDisplayMetrics().widthPixels - dp(80)) / 3;
+        int width = (getResources().getDisplayMetrics().widthPixels - dp(112)) / 3;
         // Keep a broad catalog from rebuilding hundreds of TV views on every keypress; search still covers all choices.
         for (ServiceChoices.Choice choice : shown.subList(0, Math.min(48, shown.size()))) {
             View card = card(choice);

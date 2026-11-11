@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.5
+
+- See matching services beside title artwork, without scrolling past a large banner.
+- Keep focused search and service cards inside safe TV margins.
+- Search by genre and year or decade, such as **funny movies from the ’90s**.
+- Open Google Play with **Find apps** in the app drawer.
+- Explain when a video or plain wallpaper prevents Clear glass.
+
 ## 1.7.4
 
 - Keep poster titles visible with a more compact search header.

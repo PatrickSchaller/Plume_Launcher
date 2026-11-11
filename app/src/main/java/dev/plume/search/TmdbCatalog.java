@@ -27,6 +27,8 @@ final class TmdbCatalog {
     TmdbCatalog(String token) { this.token = token; }
 
     List<Title> search(String query) throws IOException, JSONException {
+        DiscoveryQuery discovery = DiscoveryQuery.parse(query);
+        if (discovery != null) return parseTitles(get("discover/" + discovery.kind, discovery.parameters()), discovery.kind);
         return parseTitles(get("search/multi", "query", query, "include_adult", "false"));
     }
 
@@ -67,13 +69,17 @@ final class TmdbCatalog {
     }
 
     static List<Title> parseTitles(JSONObject response) throws JSONException {
+        return parseTitles(response, "");
+    }
+
+    static List<Title> parseTitles(JSONObject response, String defaultKind) throws JSONException {
         List<Title> titles = new ArrayList<>();
         JSONArray results = response.optJSONArray("results");
         if (results == null) return titles;
         for (int i = 0; i < results.length() && titles.size() < 10; i++) {
             JSONObject row = results.optJSONObject(i);
             if (row == null) continue;
-            String kind = row.optString("media_type");
+            String kind = row.optString("media_type", defaultKind);
             if (!"movie".equals(kind) && !"tv".equals(kind)) continue;
             int id = positiveId(row, "id");
             String name = string(row, "movie".equals(kind) ? "title" : "name");

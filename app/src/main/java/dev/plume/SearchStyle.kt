@@ -1,6 +1,5 @@
 package dev.plume
 
-import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.Context
 import android.graphics.Bitmap
@@ -15,7 +14,6 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.LayerDrawable
 import android.view.View
-import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import java.lang.ref.WeakReference
@@ -24,7 +22,6 @@ import java.lang.ref.WeakReference
 object SearchStyle {
     private var wallpaper = WeakReference<Bitmap>(null)
     private var frost = WeakReference<Bitmap>(null)
-    private val ease = DecelerateInterpolator(1.5f)
 
     @JvmStatic fun capture(drawable: Drawable?, blur: Bitmap?) {
         wallpaper = WeakReference(bitmap(drawable)?.takeUnless { it.isRecycled })
@@ -55,15 +52,8 @@ object SearchStyle {
     @JvmStatic fun panel(context: Context, radiusDp: Float, selected: Boolean): Drawable = Panel(context, radiusDp, selected)
 
     @JvmStatic fun focus(view: View) {
+        // TV scroll containers clip zoomed edges; the panel's lit surface and rim carry focus.
         view.isFocusable = true
-        val previous = view.onFocusChangeListener
-        view.setOnFocusChangeListener { v, focused ->
-            previous?.onFocusChange(v, focused)
-            val scale = if (focused) 1.035f else 1f
-            v.animate().cancel()
-            if (ValueAnimator.areAnimatorsEnabled()) v.animate().scaleX(scale).scaleY(scale).setDuration(160).setInterpolator(ease).start()
-            else { v.scaleX = scale; v.scaleY = scale }
-        }
     }
 
     private fun bitmap(drawable: Drawable?): Bitmap? = when (drawable) {
