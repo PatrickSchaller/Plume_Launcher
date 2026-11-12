@@ -63,8 +63,8 @@ class GlassTest {
     @Test fun tilesAndPanelsTakeTheWallpapersColour() {
         val hue = px(40, 160, 60)
         val look = GlassLook(GlassStyle.FROSTED, dark = true, backdrop = Backdrop.PICTURE, hue = hue)
-        assertEquals("dark tiles are a little stronger", glassHue(hue, true, GlassStyle.FROSTED.tintRest * 9 / 8), look.tile(lit = false))
-        assertEquals(glassHue(hue, false, GlassStyle.FROSTED.tintLit), look.copy(dark = false).tile(lit = true))
+        assertEquals("dark tiles keep legible marks", glassHue(hue, true, 0xCC), look.tile(lit = false))
+        assertEquals(glassHue(hue, false, 0xE6), look.copy(dark = false).tile(lit = true))
         assertEquals("panels are as strong in both styles", look.wash(), look.copy(style = GlassStyle.CLEAR).wash())
         assertEquals("off: no tint", 0, look.copy(style = null).tile(lit = true))
     }
@@ -78,7 +78,7 @@ class GlassTest {
         assertEquals("as strong as Dark", look.copy(coloured = false).wash() ushr 24, wash ushr 24)
         assertTrue("a pale accent on dark", luma(look.accent()!!) > 180)
         assertEquals("Dark has no accent", null, look.copy(coloured = false).accent())
-        assertEquals("tiles keep the thin tint, so each shows its own colour", look.copy(coloured = false).tile(lit = false), look.tile(lit = false))
+        assertEquals("tiles keep a neutral tint for their marks", look.copy(coloured = false).tile(lit = false), look.tile(lit = false))
     }
 
     @Test fun theGlintWaitsThenRunsOnce() {
@@ -229,5 +229,28 @@ class GlassTest {
             }
             assertEquals("$look active", expected, look.active)
         }
+    }
+
+    @Test fun glassKeepsTextContrastAgainstExtremeArtwork() {
+        fun luminance(colour: Int): Double = (0..2).sumOf { k ->
+            val s = (colour shr (16 - 8 * k) and 255) / 255.0
+            val linear = if (s <= .04045) s / 12.92 else Math.pow((s + .055) / 1.055, 2.4)
+            linear * doubleArrayOf(.2126, .7152, .0722)[k]
+        }
+        fun composite(front: Int, back: Int): Int {
+            val a = front ushr 24
+            val c = IntArray(3) { k -> ((front shr (16 - k * 8) and 255) * a + (back shr (16 - k * 8) and 255) * (255 - a)) / 255 }
+            return (255 shl 24) or (c[0] shl 16) or (c[1] shl 8) or c[2]
+        }
+        for (dark in listOf(false, true)) for (style in GlassStyle.entries) for (coloured in listOf(false, true))
+            for (wall in listOf(px(0, 0, 0), px(255, 255, 255), px(255, 0, 0), px(0, 255, 0), px(0, 0, 255))) {
+                val look = GlassLook(style, dark, Backdrop.PICTURE, wall, coloured)
+                val ink = luminance(if (dark) px(245, 245, 245) else px(17, 18, 20))
+                for (surface in listOf(look.tile(false), look.tile(true), look.wash())) {
+                    val bg = luminance(composite(surface, wall))
+                    val contrast = (maxOf(ink, bg) + .05) / (minOf(ink, bg) + .05)
+                    assertTrue("$look text contrast $contrast over $wall", contrast >= 4.5)
+                }
+            }
     }
 }

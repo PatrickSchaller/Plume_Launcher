@@ -12,7 +12,7 @@ Build and test results are recorded in [verification](docs/search-fork-verificat
 
 ## Install and try
 
-This build is version **1.7.5**, labeled **Plume + Search**, with application ID `dev.patrickschaller.plume`. It installs alongside official Plume and Better TV; each app has separate settings. Install the APK from USB and open **Plume + Search** from the TV's Apps screen.
+This build is version **1.7.6**, labeled **Plume + Search**, with application ID `dev.patrickschaller.plume`. It installs alongside official Plume and Better TV; each app has separate settings. Install the APK from USB and open **Plume + Search** from the TV's Apps screen.
 
 First try it as a normal app. Before testing its Home-button setup, turn off Better TV's Home button fix and official Plume's Home service so only the selected launcher's service handles Home. The fork keeps Plume's setup process; actual TCL restart behavior still needs checking. No stock launcher is disabled by this change.
 
@@ -68,3 +68,13 @@ Clear glass needs a still picture. Plume deliberately uses Frosted for video wal
 Google TV can use services selected on a Google profile and supported linked streaming accounts ([Google's documentation](https://support.google.com/googletv/answer/10059392)). This fork detects installed apps and uses your explicit selections; it does not read Gmail or infer paid subscriptions. Google Play Billing only returns purchases made within the calling app ([BillingClient](https://developer.android.com/reference/com/android/billingclient/api/BillingClient)).
 
 Version 1.7.5 passes 146 unit tests and 79 Android TV UI checks in each of light and dark mode. See [verified UI results and screenshots](docs/search-ui-1.7.5.md). Live TMDB data and physical TCL behavior remain separate hardware checks.
+
+## Readability and recent activity in 1.7.6
+
+Top controls have permanent light/dark backplates over wallpaper. App tiles keep stronger neutral glass tint and full-brightness monochrome marks; menus use a stronger wash, with the Wallpaper theme's colors bounded for text contrast. Wallpaper and glass texture remain visible behind these surfaces.
+
+This update enables **Recently used** ordering once. Apps opened through Plume, its show cards, or its search provider buttons move toward the left when you return Home. Existing saved manual order is retained, and **Plume settings → Apps row → Order** offers Recently used, Manual, and Most used. No Android Usage Access permission is requested; app launches outside Plume, such as a service-specific remote shortcut, are not tracked.
+
+Continue Watching now places recent resumes ahead of older items across services. A title opened through a show card is marked **Last opened**, and its local resume time helps order it while the service updates Watch Next. This means an opened title, not proof playback began. Opening an app alone no longer makes every title in its channel look newly watched. The launcher can only show titles supplied by enabled Watch Next/providers; it cannot recover a service's private viewing history or invent missing progress. See [Android's Watch Next guide](https://developer.android.com/training/tv/discovery/watch-next-add-programs).
+
+Version 1.7.6 passes 148 unit tests and 107 emulator checks per theme. See [home verification and screenshots](docs/home-ui-1.7.6.md).

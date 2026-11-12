@@ -83,6 +83,8 @@
     <string name="help_row_size">Bigger apps, and fewer across the screen. Press Left or Right to try each size.</string>
     <string name="manual">Manual</string>
     <string name="most_used">Most used</string>
+    <string name="recently_used">Recently used</string>
+    <string name="last_opened">Last opened</string>
     <string name="apps_in_row">Choose apps</string>
     <string name="all">All</string>
     <string name="app_names">App names</string>
@@ -235,7 +237,7 @@
     <string name="help_location">For the weather, and for sunrise and sunset in Auto. Automatic finds it from your internet address.</string>
     <string name="help_rearrange">Move the apps in the row. You can also hold OK on an app.</string>
     <string name="help_choose_apps">Choose the apps in the row. The others stay in All apps.</string>
-    <string name="help_order">Manual keeps your order. Most used puts the apps you open most at the start.</string>
+    <string name="help_order">Recently used puts apps opened through Plume first. Manual keeps your order. Most used sorts by launch count.</string>
     <string name="help_icon_style">Press Left or Right to try each style. The row changes while you press.</string>
     <string name="help_apps_when_hidden">When the shows row hides, the apps stay in place or move down.</string>
     <string name="help_show_icons">The small app icon on each card. Colour shows it in the app\'s own colour.</string>

@@ -20,7 +20,7 @@ internal object SettingsTransfer {
         "row_align" to setOf("left", "centre", "right"),
         "names" to setOf("focus", "always", "never"),
         "row_show" to setOf("always", "down", "never"),
-        "sort" to setOf("manual", "usage"),
+        "sort" to setOf("recent", "manual", "usage"),
         "clock_size" to setOf("38", "48", "60"),
         "clock_style" to setOf("light", "bold", "serif"),
         "weather" to setOf("off", "c", "f"),

@@ -189,7 +189,7 @@ public final class SearchInstrumentation extends Instrumentation {
         Context context = getTargetContext();
         SharedPreferences home = context.getSharedPreferences("home", Context.MODE_PRIVATE);
         Map<String, ?> before = home.getAll();
-        String[] temporaryKeys = {"setup_shown", "seen_notes", "reopen_settings", "top_bar", "icon_style"};
+        String[] temporaryKeys = {"setup_shown", "seen_notes", "reopen_settings", "top_bar", "icon_style", "sort", "recent_order_setup"};
         String testBar = "search,wifi,apps,system,plume";
         home.edit().putBoolean("setup_shown", true)
                 .putString("seen_notes", context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionName)
@@ -250,6 +250,7 @@ public final class SearchInstrumentation extends Instrumentation {
             sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
             waitForIdleSync();
             check(homeActivity.findViewById(R.id.allApps).getVisibility() == View.GONE, "Back from the drawer must return home.");
+            checks += dev.plume.HomeReadabilityCheck.run(this, homeActivity);
         } finally {
             removeMonitor(monitor);
             Activity lastSearch = search, lastLauncher = launcher;

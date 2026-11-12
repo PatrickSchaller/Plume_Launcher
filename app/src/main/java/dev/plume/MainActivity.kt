@@ -22,7 +22,6 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
-import android.graphics.BlurMaskFilter
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
@@ -179,6 +178,10 @@ internal fun watchSortKey(type: Long, engaged: Long): Long {
  * opened from Plume.
  */
 internal fun channelSortKey(engaged: Long, opened: Long) = watchSortKey(0, if (engaged > 0) engaged else opened)
+
+/** A title resumed here keeps its place while its streaming app updates Watch Next. */
+internal fun resumeSortKey(providerKey: Long, resumed: Long) =
+    if (resumed > 0) maxOf(providerKey, watchSortKey(0, resumed)) else providerKey
 
 /**
  * Rows as (weight, sort key, item) to (sort key, item), highest weight first. A channel's cards often share one sort
@@ -418,6 +421,8 @@ class MainActivity : Activity() {
             prefs.edit().putString("wp_light", FIRST_WALLPAPER).putString("wp_dark", FIRST_WALLPAPER)
                 .putString("theme", "light").putString("glass_style", GlassStyle.FROSTED.key).apply()
         fetchFirstWallpaper4k()
+        if (!prefs.getBoolean("recent_order_setup", false))
+            prefs.edit().putString("sort", "recent").putBoolean("recent_order_setup", true).apply()
         if (!prefs.getBoolean("wp_shared", false)) {
             val wasDark = wantDark()
             val choice = prefs.getString(if (wasDark) "wp_dark" else "wp_light", null)
@@ -455,19 +460,14 @@ class MainActivity : Activity() {
             R.id.powerButton to { powerDialog() },
         )) findViewById<ImageView>(id).apply {
             setColorFilter(fg)
-            val ring = GradientDrawable().apply { shape = GradientDrawable.OVAL }
-            // Lit, the icon sits on its ring, so it takes the theme colour; otherwise it's on the wallpaper (see fitInk).
-            // Under the ring, the icon's shadow (see iconShadow); empty until fitInk.
-            background = LayerDrawable(arrayOf(ColorDrawable(Color.TRANSPARENT), ring))
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL }
             setOnFocusChangeListener { v, focused ->
                 if (focused) lastTop = v
-                (background as LayerDrawable).getDrawable(0).alpha = if (focused) 0 else 255 // on its disc it needs none
-                // With glass a lit icon sits on a glass disc: the frost, its light and the wallpaper's tint.
                 val disc = glassActive()
-                ring.setColor(if (!focused) 0 else if (disc) glassLook().tile(lit = true) else if (dark) DARK_CARD_LIT[0] else Color.WHITE)
                 if (focused && disc) glass.add(v, v.width / 2f) else glass.remove(v)
-                if (disc) glass.kick(260) // the disc grows with the icon
-                setColorFilter(if (focused) fg else iconInk)
+                iconBackplate(this)
+                if (disc) glass.kick(260)
+                setColorFilter(fg)
                 animate().scaleX(if (focused) 1.15f else 1f).scaleY(if (focused) 1.15f else 1f)
                     .setDuration(160).setInterpolator(DECELERATE).start()
             }
@@ -534,7 +534,7 @@ class MainActivity : Activity() {
             return
         }
         // Only rebuild what changed, so focus stays where it was when returning from an app.
-        if (appsDirty) refreshApps() else if (appRow.childCount == 0) renderApps()
+        if (appsDirty) refreshApps() else if (appRow.childCount == 0 || prefs.getString("sort", "recent") == "recent") renderApps()
         refreshWatchNext()
         showWeather()
         ui.removeCallbacks(weatherTick)
@@ -1049,7 +1049,7 @@ class MainActivity : Activity() {
         fg = if (dark) DARK_TEXT else 0xFF111214.toInt()
         // Without glass the cards are nearly solid, so Off looks clearly different from glass: dark ones are rimCard()s
         // at 90%, light ones grey at 94%, and focus lifts them to 95% and 100%.
-        // Over a blur the light tiles need less colour of their own (43% at rest, 75% selected; Clear is lighter).
+        // Glass keeps a firm tint so app marks remain readable over detailed show artwork.
         val look = glassLook()
         val glassy = look.active
         // Glass tints with the wallpaper's own colour, and focus brightens a tile without filling it white.
@@ -1089,10 +1089,10 @@ class MainActivity : Activity() {
         val topInk = inkBehind(top)
         for (v in top) ink(v, topInk, fade = true)
         val icons = topIcons()
-        iconInk = inkBehind(icons)
+        iconInk = fg
         for (v in icons) {
             if (!v.isFocused) v.setColorFilter(iconInk)
-            iconShadow(v)
+            iconBackplate(v)
         }
         val names = findViewById<LinearLayout>(R.id.nameRow).let { row -> (0 until row.childCount).map { row.getChildAt(it) as TextView } }
         val apps = listOf(findViewById<TextView>(R.id.appsTitle)) + names
@@ -1111,29 +1111,13 @@ class MainActivity : Activity() {
         }
     }
 
-    /**
-     * A soft shadow in the opposite colour under a top icon, as [ink] gives text, so it holds on busy photos too.
-     * Drawn once into a small bitmap in the icon's background, under its focus ring; none on a plain wallpaper.
-     */
-    private fun iconShadow(v: ImageView) {
-        val layers = v.background as? LayerDrawable ?: return
-        val icon = v.drawable?.constantState?.newDrawable(resources)?.mutate()
-        val box = v.layoutParams.width - v.paddingLeft - v.paddingRight
-        if (wpThumb == null || icon == null || box <= 0) return layers.setDrawable(0, ColorDrawable(Color.TRANSPARENT))
-        val blur = dp(2)
-        val mask = Bitmap.createBitmap(box + blur * 2, box + blur * 2, Bitmap.Config.ARGB_8888)
-        icon.setBounds(blur, blur, blur + box, blur + box)
-        icon.draw(Canvas(mask))
-        val shape = mask.extractAlpha()
-        mask.eraseColor(Color.TRANSPARENT)
-        Canvas(mask).drawBitmap(shape, 0f, dp(1).toFloat(), Paint().apply {
-            color = if (iconInk == Color.WHITE) 0x59000000 else 0x59FFFFFF
-            maskFilter = BlurMaskFilter(blur.toFloat(), BlurMaskFilter.Blur.NORMAL)
-        })
-        shape.recycle()
-        layers.setDrawable(0, BitmapDrawable(resources, mask).apply { alpha = if (v.isFocused) 0 else 255 })
-        val inset = v.paddingLeft - blur
-        layers.setLayerInset(0, inset, inset, inset, inset)
+    /** A stable backplate keeps each control legible as show artwork or video changes underneath it. */
+    private fun iconBackplate(v: ImageView) {
+        val disc = v.background as? GradientDrawable ?: return
+        val pictured = Backdrop.of(currentWallpaper()) != Backdrop.PLAIN
+        disc.setColor(if (pictured) glassHue(prefs.getInt("glass_hue", GLASS_GREY), dark, if (v.isFocused) 0xF5 else 0xDE)
+            else if (v.isFocused) { if (dark) DARK_CARD_LIT[0] else Color.WHITE } else Color.TRANSPARENT)
+        disc.setStroke(if (v.isFocused) dp(2) else dp(1), if (v.isFocused) fg else if (pictured) (fg and 0xFFFFFF) or 0x33000000 else Color.TRANSPARENT)
     }
 
     /**
@@ -2503,7 +2487,7 @@ class MainActivity : Activity() {
      */
     private fun renderSettings(at: Int = 0) {
         val theme = prefs.getString("theme", "light")!!
-        val sort = prefs.getString("sort", "manual")!!
+        val sort = prefs.getString("sort", "recent")!!
         val hidden = prefs.getStringSet("hidden_watch", emptySet())!!.size
         val weather = prefs.getString("weather", "off")!!
         val unit = if (weather == "off") prefs.getString("wx_unit", "c")!! else weather
@@ -2591,10 +2575,8 @@ class MainActivity : Activity() {
             R.string.folder_photo_changes to Triple(getString(R.string.folder_photo_changes), getString(PHOTO_EVERY[photoEvery()]!!)) { pickPhotoEvery() },
             R.string.wp_sources to Triple(getString(R.string.wp_sources), // the count queries the channels: only when the Shows wallpaper is on, so the settings do not wait for it
                 if (ShowsWall.CHOICE in listOf(currentWallpaper(false), currentWallpaper(true))) getString(R.string.n_on, wpSourceList().count { wpSourceOn(it.first) }) else "") { pickWpSources() },
-            R.string.sort_apps to Triple(getString(R.string.sort_apps), if (sort == "manual") getString(R.string.manual) else getString(R.string.most_used)) {
-                prefs.edit().putString("sort", if (sort == "manual") "usage" else "manual").apply()
-                renderApps()
-                renderSettings(R.string.sort_apps)
+            R.string.sort_apps to Triple(getString(R.string.sort_apps), getString(when (sort) { "recent" -> R.string.recently_used; "usage" -> R.string.most_used; else -> R.string.manual })) {
+                steps[R.string.sort_apps]!!(1)
             },
             R.string.apps_in_row to Triple(getString(R.string.apps_in_row), if (rowHidden == 0) getString(R.string.all) else getString(R.string.n_of_m, apps.size - rowHidden, apps.size)) { pickRowApps() },
             R.string.row_position to Triple(getString(R.string.row_position), getString(ROW_ALIGN[rowAlign()]!!.first)) {
@@ -2676,7 +2658,12 @@ class MainActivity : Activity() {
                 renderSettings(R.string.lock_layout)
             },
         )
-        for (k in listOf(R.string.sort_apps, R.string.weather_units)) steps[k] = { rows[k]!!.third() }
+        steps[R.string.sort_apps] = { d ->
+            prefs.edit().putString("sort", listOf("recent", "manual", "usage").step(sort, d)).apply()
+            renderApps()
+            renderSettings(R.string.sort_apps)
+        }
+        steps[R.string.weather_units] = { rows[R.string.weather_units]!!.third() }
         // Like the layout: behind the PIN. unlock() closes the panel after the PIN, so open it again.
         rows[R.string.section_keys] = page(getString(R.string.section_keys), "${keysSummary()}  ›") {
             unlock(back = { renderSettings(R.string.section_keys) }) {
@@ -2723,7 +2710,7 @@ class MainActivity : Activity() {
                 R.string.theme to listOf(R.string.theme_light to R.drawable.ms_light_mode, R.string.theme_dark to R.drawable.ms_dark_mode,
                     R.string.theme_wallpaper to R.drawable.ms_wallpaper, R.string.theme_auto to R.drawable.ms_routine).map { (s, i) -> getString(s) to i },
                 R.string.glass to listOf(R.string.off, R.string.glass_frosted, R.string.glass_clear).map { getString(it) to null },
-                R.string.sort_apps to listOf(R.string.manual, R.string.most_used).map { getString(it) to null },
+                R.string.sort_apps to listOf(R.string.recently_used, R.string.manual, R.string.most_used).map { getString(it) to null },
                 R.string.app_names to listOf(R.string.on_focus, R.string.always, R.string.never).map { getString(it) to null },
                 R.string.row_size to ROW_SIZES.values.map { getString(it.first) to null },
                 R.string.row_position to ROW_ALIGN.values.map { getString(it.first) to null },
@@ -3419,9 +3406,9 @@ class MainActivity : Activity() {
     private fun showNet(caps: NetworkCapabilities?) {
         val ethernet = caps?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
         wifi.setImageResource(if (ethernet) R.drawable.ic_ethernet else R.drawable.ic_wifi)
-        iconShadow(wifi) // the shadow takes the new picture's shape
+        iconBackplate(wifi)
         // Dim only the icon: the focus ring is the background and should stay full strength.
-        wifi.imageAlpha = if (caps == null) 90 else 255
+        wifi.imageAlpha = if (caps == null) 180 else 255
     }
 
     private fun openSettings(action: String, data: Uri? = null) {
@@ -3540,7 +3527,10 @@ class MainActivity : Activity() {
         // Streaming apps first by default, then alphabetical; manual order or usage overrides.
         val byDefault = compareBy<App> { DEFAULT_ORDER.indexOf(it.pkg).let { i -> if (i < 0) Int.MAX_VALUE else i } }
             .thenBy { it.label.lowercase() }
-        if (prefs.getString("sort", "manual") == "usage") {
+        if (prefs.getString("sort", "recent") == "recent") {
+            return listed().sortedWith(compareByDescending<App> { prefs.getLong("t_" + it.pkg, 0) }.then(byDefault))
+        }
+        if (prefs.getString("sort", "recent") == "usage") {
             return listed().sortedWith(compareByDescending<App> { prefs.getInt("n_" + it.pkg, 0) }.then(byDefault))
         }
         val order = prefs.getString("order", "")!!.split(',')
@@ -3781,16 +3771,8 @@ class MainActivity : Activity() {
                 setPadding(dp(6), dp(7), dp(6), 0)
             }
         }
-        // Same card as light mode; in dark the marks rest slightly dimmed and brighten with focus.
-        val restLogo = if (dark) 0.8f else 1f
-        val restText = if (dark) 0.65f else 1f
-        img.alpha = restLogo
-        text?.alpha = restText
         style(col, dp(8), card = true) { focused ->
             text?.setActive(focused) // a name too wide for the tile scrolls while it is selected
-            if (!dark) return@style
-            img.animate().alpha(if (focused) 1f else restLogo).setDuration(160).start()
-            text?.animate()?.alpha(if (focused) 1f else restText)?.setDuration(160)?.start()
         }
         if (text == null) {
             // Icons share one height. Wordmarks sit in a square viewport, so fit them by width instead
@@ -4432,16 +4414,15 @@ class MainActivity : Activity() {
     }
 
     private fun launch(a: App) {
-        prefs.edit().putInt("n_" + a.pkg, prefs.getInt("n_" + a.pkg, 0) + 1).putLong("t_" + a.pkg, System.currentTimeMillis()).apply()
-        if (prefs.getString("sort", "manual") == "usage") appsDirty = true
         val from = currentFocus?.takeIf { it.tag == a.pkg } // the tile that was pressed, not one a remote key opened it from
         try {
             if (a.pkg.startsWith(HDMI)) {
                 Remap.openInput(this, a.pkg.removePrefix(HDMI))
+                RecentActivity.opened(prefs, a.pkg, System.currentTimeMillis())
                 returnTo = focusKey(from)
-            } else startApp(a.launch, from)
+            } else startApp(a.launch, from, a.pkg)
         } catch (e: Exception) {
-            (packageManager.getLeanbackLaunchIntentForPackage(a.pkg) ?: packageManager.getLaunchIntentForPackage(a.pkg))?.let { startApp(it, from) }
+            (packageManager.getLeanbackLaunchIntentForPackage(a.pkg) ?: packageManager.getLaunchIntentForPackage(a.pkg))?.let { startApp(it, from, a.pkg) }
         }
     }
 
@@ -4450,10 +4431,12 @@ class MainActivity : Activity() {
     private var openedFrom: WeakReference<View>? = null // the tile or card an app was opened from, until we come back
 
     /** Starts an app. With [from] and the animations on, the app opens out of that tile and the row settles on return. */
-    private fun startApp(intent: Intent, from: View?) {
+    private fun startApp(intent: Intent, from: View?, pkg: String?) {
         val source = from?.takeIf { animationsOn() && it.isAttachedToWindow && it.width > 0 }
         val options = source?.let { ActivityOptions.makeScaleUpAnimation(it, 0, 0, it.width, it.height).toBundle() }
         startActivity(intent, options)
+        RecentActivity.opened(prefs, pkg, System.currentTimeMillis())
+        if (prefs.getString("sort", "recent") in listOf("recent", "usage")) appsDirty = true
         openedFrom = source?.let { WeakReference(it) }
         returnTo = focusKey(from)
     }
@@ -5275,8 +5258,8 @@ class MainActivity : Activity() {
      * 2. Apps' own home-screen channels the user switched on (see [channelOn]); ones named "Continue Watching"
      *    are on to start with. Stremio publishes one (with progress and an autoPlay resume link) instead of
      *    using Watch Next, so signing in to Stremio on the TV is all it takes. Channel rows sort by their own
-     *    last-watched time when the app sets one, else by the time the app was last opened from Plume, see [channelSortKey].
-     * Newest first across apps, each app's [PER_APP] newest ahead of the rest, so one app with ten shows can't bury the others.
+     *    last-watched time when provided. Missing playback times keep the channel's order; an app open isn't a watch.
+     * Recently resumed titles first across apps, followed by other provider suggestions.
      */
     private fun queryWatchNext(): List<Prog> {
         val hidden = prefs.getStringSet("hidden_watch", emptySet())!!
@@ -5292,7 +5275,11 @@ class MainActivity : Activity() {
         android.util.Log.i("Plume", "continue watching: ${watchNext.size} from Watch Next, ${channels.size} from ${on.size} channels")
         publishingPkgs = all.mapNotNull { it.second.pkg }.toSet()
         val off = prefs.getStringSet("cw_off", emptySet())!!
-        return newestPerApp(all.filter { it.second.pkg !in off }.distinctBy { it.second.intent ?: it.second.title }, PER_APP) { it.group }
+        val last = prefs.getString("last_opened_show", null)
+        val opened = prefs.getLong("last_opened_show_at", 0)
+        return all.filter { it.second.pkg !in off }
+            .sortedByDescending { (key, p) -> resumeSortKey(key, if (hideKey(p.pkg, p.title) == last) opened else 0) }
+            .map { it.second }.distinctBy { it.intent ?: "${it.pkg}/${it.title}" }
             .take(20)
     }
 
@@ -5415,7 +5402,7 @@ class MainActivity : Activity() {
                 val prog = Prog(title, sub, progress, str("thumbnail_uri") ?: str("poster_art_uri"), str("intent_uri"), pkg, group ?: pkg, wide)
                 val engaged = num("last_engagement_time_utc_millis")
                 out += Triple(num("weight"),
-                    if (group == null) watchSortKey(num("watch_next_type"), engaged) else channelSortKey(engaged, prefs.getLong("t_$pkg", 0)), prog)
+                    if (group == null) watchSortKey(num("watch_next_type"), engaged) else channelSortKey(engaged, 0), prog)
             }
         }
         return byWeight(out)
@@ -5567,6 +5554,12 @@ class MainActivity : Activity() {
         }
         frame.contentDescription = p.title
         frame.addView(img, MATCH_PARENT, MATCH_PARENT)
+        if (hideKey(p.pkg, p.title) == prefs.getString("last_opened_show", null)) {
+            frame.addView(label(getString(R.string.last_opened), 10f).apply {
+                setTextColor(Color.WHITE); setPadding(dp(9), dp(4), dp(9), dp(4))
+                background = GradientDrawable().apply { setColor(0xEB111214.toInt()); cornerRadius = dp(8).toFloat() }
+            }, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply { setMargins(dp(8), dp(8), dp(8), 0) })
+        }
         frame.setOnClickListener { open(p) }
         frame.setTag(R.id.watchRow, p) // holding OK hides it (see onHold)
         // 2:1 keeps logos and badges that providers bake into 16:9 art.
@@ -5611,12 +5604,13 @@ class MainActivity : Activity() {
     }
 
     private fun open(p: Prog) {
-        prefs.edit().putLong("t_${p.pkg}", System.currentTimeMillis()).apply()
         val from = currentFocus?.takeIf { it.getTag(R.id.watchRow) is Prog }
         try {
-            startApp(Intent.parseUri(p.intent, Intent.URI_INTENT_SCHEME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), from)
+            startApp(Intent.parseUri(p.intent, Intent.URI_INTENT_SCHEME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), from, p.pkg)
+            prefs.edit().putString("last_opened_show", hideKey(p.pkg, p.title)).putLong("last_opened_show_at", System.currentTimeMillis()).apply()
+            watchKey = null
         } catch (e: Exception) {
-            p.pkg?.let { packageManager.getLeanbackLaunchIntentForPackage(it) }?.let { startApp(it, from) }
+            p.pkg?.let { packageManager.getLeanbackLaunchIntentForPackage(it) }?.let { startApp(it, from, p.pkg) }
         }
     }
 
@@ -5889,7 +5883,6 @@ class MainActivity : Activity() {
         const val PIN_TRIES = 5 // wrong PINs before a 30 s wait
         const val UNLOCKED_MS = 5 * 60_000L
         const val MEDIA_REQUEST = 3
-        const val PER_APP = 3 // Continue Watching items per app ahead of the rest
         const val CARDS_AHEAD = 8 // Continue Watching cards built past the focused one (see addCardsTo)
         val READ_PHOTOS = if (Build.VERSION.SDK_INT >= 33) "android.permission.READ_MEDIA_IMAGES" else "android.permission.READ_EXTERNAL_STORAGE"
         /** Minutes between folder photos. */

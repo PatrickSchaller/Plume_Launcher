@@ -195,18 +195,23 @@ internal data class GlassLook(val style: GlassStyle?, val dark: Boolean, val bac
         // Dark tint makes a focused tile darker, not brighter: on Clear and in the Wallpaper theme focus keeps the rest
         // tint and shows by its light (sheen, rim, glint) and lift instead.
         val more = lit && !(dark && (coloured || it == GlassStyle.CLEAR))
-        // Tiles keep the thin tint in the Wallpaper theme too: one vivid colour over every tile hid the colour of the
-        // picture under each one, so a busy photo turned the whole row one flat colour.
-        glassHue(hue, dark, (if (more) it.tintLit else it.tintRest) * (if (dark) 9 else 8) / 8)
+        // Keep enough tint behind monochrome marks even over the brightest or darkest wallpaper details.
+        glassHue(hue, dark, maxOf(if (more) 0xE6 else 0xCC,
+            (if (more) it.tintLit else it.tintRest) * (if (dark) 9 else 8) / 8))
     } ?: 0
 
     /** The panel's and menus' tint: as strong in both styles, as they carry text. */
-    fun wash(): Int = tint(if (dark) 0x99 else 0x8C)
+    fun wash(): Int = tint(0xE6)
 
     /** The colour of picked choices and switches: the wallpaper's, bright on dark and deep on light; null for the plain ink. */
     fun accent(): Int? = if (coloured) vivid(hue, !dark) else null
 
-    private fun tint(alpha: Int) = if (coloured) vivid(hue, dark) and 0xFFFFFF or (alpha shl 24) else glassHue(hue, dark, alpha)
+    private fun tint(alpha: Int): Int {
+        if (!coloured) return glassHue(hue, dark, alpha)
+        val colour = vivid(hue, dark)
+        val channels = IntArray(3) { k -> (colour shr (16 - 8 * k) and 0xFF).let { if (dark) it.coerceAtMost(90) else it.coerceAtLeast(210) } }
+        return (alpha shl 24) or (channels[0] shl 16) or (channels[1] shl 8) or channels[2]
+    }
 }
 
 /**

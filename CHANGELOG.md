@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.6
+
+- Read settings controls and app icons over busy show wallpapers with stronger glass and permanent control backplates.
+- Put apps opened through Plume first with **Recently used** ordering, enabled on this update.
+- Keep Manual and Most used ordering available in **App row → Order**.
+- Bring recently resumed shows forward and mark a title resumed through Plume as **Last opened**.
+- Keep app opens separate from title playback when a streaming channel supplies no viewing time.
+
 ## 1.7.5
 
 - See matching services beside title artwork, without scrolling past a large banner.

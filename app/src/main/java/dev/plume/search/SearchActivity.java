@@ -335,7 +335,11 @@ public final class SearchActivity extends Activity {
         return packageName == null ? null : getPackageManager().getLeanbackLaunchIntentForPackage(packageName);
     }
     private void openApp(Intent intent) {
-        try { startActivity(intent); }
+        try {
+            startActivity(intent);
+            dev.plume.RecentActivity.opened(getSharedPreferences("home", MODE_PRIVATE),
+                    intent.getComponent() == null ? intent.getPackage() : intent.getComponent().getPackageName(), System.currentTimeMillis());
+        }
         catch (ActivityNotFoundException | SecurityException unavailable) { toast("This app is unavailable. Open it from Apps."); }
     }
     private void chooseSeason() {

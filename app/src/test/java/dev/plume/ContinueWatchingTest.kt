@@ -4,6 +4,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ContinueWatchingTest {
+    @Test fun resumedTitleBeatsStaleProviderTimeWithoutDemotingANewerPlayback() {
+        val stale = watchSortKey(0, 1_700_000_000_000)
+        val newer = watchSortKey(0, 1_800_000_000_000)
+        assertEquals(watchSortKey(0, 1_750_000_000_000), resumeSortKey(stale, 1_750_000_000_000))
+        assertEquals(newer, resumeSortKey(newer, 1_750_000_000_000))
+        assertEquals(stale, resumeSortKey(stale, 0))
+    }
     @Test fun newestFirstAndThreePerAppAhead() {
         // Netflix reports times for ten shows; Stremio's channel rows all get the time it was last opened.
         val netflix = (1..10).map { 100L - it to "netflix/$it" }

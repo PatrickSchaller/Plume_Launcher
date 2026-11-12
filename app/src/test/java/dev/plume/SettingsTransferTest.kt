@@ -50,6 +50,7 @@ class SettingsTransferTest {
     }
 
     @Test fun acceptsAllPublishedDisplayChoices() {
+        for (sort in listOf("recent", "manual", "usage")) assertEquals(sort, SettingsTransfer.validate(mapOf("sort" to sort))["sort"])
         for (style in ICON_STYLE_KEYS) assertEquals(style, SettingsTransfer.validate(mapOf("icon_style" to style))["icon_style"])
         for (align in listOf("left", "centre", "right")) assertEquals(align, SettingsTransfer.validate(mapOf("row_align" to align))["row_align"])
     }
