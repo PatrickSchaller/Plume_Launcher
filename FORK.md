@@ -12,7 +12,7 @@ Build and test results are recorded in [verification](docs/search-fork-verificat
 
 ## Install and try
 
-This build is version **1.7.6**, labeled **Plume + Search**, with application ID `dev.patrickschaller.plume`. It installs alongside official Plume and Better TV; each app has separate settings. Install the APK from USB and open **Plume + Search** from the TV's Apps screen.
+This build is version **1.7.7**, labeled **Plume + Search**, with application ID `dev.patrickschaller.plume`. It installs alongside official Plume and Better TV; each app has separate settings. Install the APK from USB and open **Plume + Search** from the TV's Apps screen.
 
 First try it as a normal app. Before testing its Home-button setup, turn off Better TV's Home button fix and official Plume's Home service so only the selected launcher's service handles Home. The fork keeps Plume's setup process; actual TCL restart behavior still needs checking. No stock launcher is disabled by this change.
 
@@ -78,3 +78,9 @@ This update enables **Recently used** ordering once. Apps opened through Plume, 
 Continue Watching now places recent resumes ahead of older items across services. A title opened through a show card is marked **Last opened**, and its local resume time helps order it while the service updates Watch Next. This means an opened title, not proof playback began. Opening an app alone no longer makes every title in its channel look newly watched. The launcher can only show titles supplied by enabled Watch Next/providers; it cannot recover a service's private viewing history or invent missing progress. See [Android's Watch Next guide](https://developer.android.com/training/tv/discovery/watch-next-add-programs).
 
 Version 1.7.6 passes 148 unit tests and 107 emulator checks per theme. See [home verification and screenshots](docs/home-ui-1.7.6.md).
+
+## Faster query entry in 1.7.7
+
+Search opens with its query focused and, once TMDB setup is complete, requests the TV keyboard. **Up** from any card in the first poster row goes directly to **New search**. OK clears the previous query, focuses input and opens the keyboard. This explicit action avoids TV keyboards inconsistently replacing selected text. The field also uses Android's select-all-on-focus behavior for editing; **Down** from the query returns to the first poster when the keyboard is closed. No-match results return to query entry automatically. This APK also includes the 1.7.6 home readability and recency changes.
+
+Version 1.7.7 passes 148 unit tests and 119 emulator checks per theme. See [query input verification](docs/query-input-1.7.7.md).

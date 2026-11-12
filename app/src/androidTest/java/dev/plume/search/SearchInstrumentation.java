@@ -45,12 +45,15 @@ public final class SearchInstrumentation extends Instrumentation {
         if ("light".equals(testTheme) || "dark".equals(testTheme)) home.edit().putString("theme", testTheme).commit();
         int outcome = Activity.RESULT_OK;
         try {
+            try (android.os.ParcelFileDescriptor.AutoCloseInputStream input = new android.os.ParcelFileDescriptor.AutoCloseInputStream(
+                    getUiAutomation().executeShellCommand("input keyevent 19"))) { while (input.read() != -1) { } }
             searchFixtures();
             availabilityFixtures();
             broadcastRules();
             checks += ArtworkChecks.run();
             checks += ServicesInstrumentationCheck.run(this);
             tokenFieldIsMasked();
+            checks += QueryInputCheck.run(this);
             launcherSearchNavigation();
             results.putString("stream", "\nPassed " + checks + " search and launcher-navigation checks.\n");
         } catch (Throwable failure) {

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.7
+
+- Start Search with the query focused and the keyboard ready when search is set up.
+- Highlight the existing query when returning to the field, with **New search** available for a clean start.
+- Press **Up** from the first poster row for **New search**, then OK to clear the old query and start typing.
+- Return to query entry automatically when a search has no matches.
+
 ## 1.7.6
 
 - Read settings controls and app icons over busy show wallpapers with stronger glass and permanent control backplates.

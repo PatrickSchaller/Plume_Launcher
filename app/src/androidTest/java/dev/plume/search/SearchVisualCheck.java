@@ -11,6 +11,7 @@ import android.util.LruCache;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import dev.plume.R;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -36,6 +37,12 @@ final class SearchVisualCheck {
         }
     }
     private static int preview(Instrumentation test, SearchActivity activity) throws Exception {
+        EditText query = (EditText) field("query").get(activity);
+        if (activity.getCurrentFocus() != query) throw new AssertionError("Search must open with its query focused.");
+        test.runOnMainSync(() -> {
+            activity.getSystemService(android.view.inputmethod.InputMethodManager.class).hideSoftInputFromWindow(query.getWindowToken(), 0);
+            query.setText("Previous search");
+        });
         Field titles = field("titles"), cache = field("posters"), selected = field("selected"), offers = field("availability");
         Method results = method("showResults"), details = method("renderAvailability");
         BitmapFactory.Options options = new BitmapFactory.Options(); options.inSampleSize = 4;
@@ -56,6 +63,21 @@ final class SearchVisualCheck {
         test.runOnMainSync(() -> assertVisible(activity.getCurrentFocus()));
         View before = activity.getCurrentFocus(); test.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_RIGHT); test.waitForIdleSync();
         if (before == activity.getCurrentFocus()) throw new AssertionError("Poster cards do not support horizontal D-pad navigation.");
+        test.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_UP); test.waitForIdleSync();
+        View newSearch = (View) field("newSearch").get(activity);
+        if (activity.getCurrentFocus() != newSearch) throw new AssertionError("Up from the first poster row did not reach New search.");
+        test.runOnMainSync(newSearch::performClick); test.waitForIdleSync();
+        if (activity.getCurrentFocus() != query || query.length() != 0)
+            throw new AssertionError("New search did not clear and focus the query.");
+        test.sendStringSync("replacement"); test.waitForIdleSync();
+        if (!"replacement".equalsIgnoreCase(query.getText().toString())) throw new AssertionError("Replacement fixture text was '" + query.getText()
+                + "', selection=" + query.getSelectionStart() + ":" + query.getSelectionEnd());
+        test.runOnMainSync(() -> activity.getSystemService(android.view.inputmethod.InputMethodManager.class)
+                .hideSoftInputFromWindow(query.getWindowToken(), 0));
+        QueryInputCheck.awaitKeyboard(test, query, false);
+        test.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN); test.waitForIdleSync();
+        if (activity.getCurrentFocus() == query) throw new AssertionError("Down from query did not return to posters.");
+        test.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_RIGHT); test.waitForIdleSync();
         shot(test, "plume-results-preview.png");
         test.runOnMainSync(() -> {
             try {
@@ -116,7 +138,7 @@ final class SearchVisualCheck {
         if (selected.get(activity) != null || activity.isFinishing()) throw new AssertionError("Details Back lost the poster results.");
         if (activity.getCurrentFocus() == null || !activity.getCurrentFocus().getContentDescription().toString().contains("Design preview 2"))
             throw new AssertionError("Details Back did not restore the selected poster.");
-        return 11;
+        return 16;
     }
     static void assertVisible(View view) {
         Rect visible = new Rect();

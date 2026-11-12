@@ -61,7 +61,7 @@ public final class SearchActivity extends Activity {
     private SharedPreferences preferences;
     private EditText query;
     private CheckBox onlyMine;
-    private Button everywhere, myServices;
+    private Button everywhere, myServices, newSearch;
     private LinearLayout content, stage;
     private String resultLabel = "";
     private TextView status;
@@ -72,6 +72,7 @@ public final class SearchActivity extends Activity {
     private int season = -1, lastTitleId;
     private volatile int generation;
     private volatile boolean destroyed;
+    private boolean firstWindowFocus = true;
     private Future<?> pending;
 
     @Override public void onCreate(Bundle state) {
@@ -79,7 +80,7 @@ public final class SearchActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 33) getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
                 android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::navigateBack);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING);
         preferences = getSharedPreferences("search", MODE_PRIVATE);
         WHITE = SearchStyle.ink(this); MUTED = SearchStyle.muted(this);
         BACKGROUND = SearchStyle.dark(this) ? Color.rgb(13, 15, 19) : Color.rgb(240, 242, 245);
@@ -95,17 +96,28 @@ public final class SearchActivity extends Activity {
         page.addView(header);
         LinearLayout controls = new LinearLayout(this); controls.setGravity(Gravity.CENTER_VERTICAL);
         controls.setPadding(0, dp(10), 0, dp(6));
-        query = new EditText(this); query.setSingleLine(true);
+        query = new EditText(this); query.setSingleLine(true); query.setId(View.generateViewId());
+        query.setSelectAllOnFocus(true);
+        query.setOnFocusChangeListener((view, focused) -> { if (focused) selectQuery(); });
         query.setHint("Title, or funny movies from the ’90s"); query.setTextColor(WHITE); query.setHintTextColor(MUTED); query.setTextSize(19);
         query.setPadding(dp(18), 0, dp(18), 0); query.setBackground(SearchStyle.panel(this, 16f, false));
         query.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         query.setImeOptions(EditorInfo.IME_ACTION_SEARCH); query.setFilters(new InputFilter[]{new InputFilter.LengthFilter(200)});
+        query.setOnClickListener(view -> editQuery());
+        query.setOnKeyListener((view, key, event) -> {
+            View next = query.getNextFocusDownId() == View.NO_ID ? null : findViewById(query.getNextFocusDownId());
+            if (key == android.view.KeyEvent.KEYCODE_DPAD_DOWN && event.getAction() == android.view.KeyEvent.ACTION_DOWN
+                    && event.hasNoModifiers() && next != null) return next.requestFocus();
+            return false;
+        });
         query.setOnEditorActionListener((view, action, event) -> {
             if (action == EditorInfo.IME_ACTION_SEARCH || event != null && event.getAction() == android.view.KeyEvent.ACTION_UP
                     && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER) { search(); return true; }
             return false;
         });
         controls.addView(query, new LinearLayout.LayoutParams(0, dp(44), 1));
+        newSearch = button("New search", this::newQuery); newSearch.setId(View.generateViewId());
+        controls.addView(newSearch);
         controls.addView(button("Search", this::search)); page.addView(controls);
         LinearLayout filters = new LinearLayout(this); filters.setGravity(Gravity.CENTER_VERTICAL);
         filters.addView(text("Viewing options", 13, MUTED));
@@ -129,7 +141,38 @@ public final class SearchActivity extends Activity {
         root.addView(page, new FrameLayout.LayoutParams(-1, -1)); setContentView(root);
         if (state != null) query.setText(state.getString("query", ""));
         intro();
-        if (getIntent().getBooleanExtra("open_settings", false)) showSettings();
+        if (getIntent().getBooleanExtra("open_settings", false)) { firstWindowFocus = false; showSettings(); }
+        else query.requestFocus();
+    }
+
+    @Override public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && firstWindowFocus) {
+            firstWindowFocus = false;
+            query.requestFocus(); query.selectAll();
+            if (!token().isEmpty()) editQuery();
+        }
+    }
+
+    private void editQuery() {
+        boolean wasFocused = query.hasFocus();
+        query.requestFocus();
+        if (wasFocused) selectQuery();
+        InputMethodManager keyboard = getSystemService(InputMethodManager.class);
+        if (keyboard != null) query.post(() -> {
+            if (!isFinishing() && query.hasFocus()) keyboard.showSoftInput(query, InputMethodManager.SHOW_IMPLICIT);
+        });
+    }
+
+    private void newQuery() {
+        query.setText(""); editQuery();
+    }
+
+    private void selectQuery() {
+        query.clearComposingText(); query.selectAll();
+        InputMethodManager keyboard = getSystemService(InputMethodManager.class);
+        // A TV keyboard can keep the previous word in its composer after a search is submitted.
+        if (keyboard != null) keyboard.restartInput(query);
     }
 
     private String token() { return preferences.getString("tmdb_token", ""); }
@@ -202,11 +245,12 @@ public final class SearchActivity extends Activity {
             View card = cards.get(i);
             if (i % columns > 0) card.setNextFocusLeftId(cards.get(i - 1).getId());
             if (i % columns < columns - 1 && i + 1 < cards.size()) card.setNextFocusRightId(cards.get(i + 1).getId());
-            if (i >= columns) card.setNextFocusUpId(cards.get(i - columns).getId());
+            card.setNextFocusUpId(i >= columns ? cards.get(i - columns).getId() : newSearch.getId());
             if (i + columns < cards.size()) card.setNextFocusDownId(cards.get(i + columns).getId());
         }
         content.addView(grid);
-        if (previous != null) previous.requestFocus(); else if (first != null) first.requestFocus();
+        if (first != null) query.setNextFocusDownId(first.getId());
+        if (previous != null) previous.requestFocus(); else if (first != null) first.requestFocus(); else editQuery();
     }
     private void showAvailability(TmdbCatalog.Title title, int seasonNumber) {
         selected = title; lastTitleId = title.id; season = seasonNumber; availability = null;
@@ -239,6 +283,7 @@ public final class SearchActivity extends Activity {
         scroll.addView(body); return scroll;
     }
     private void resetContent() {
+        query.setNextFocusDownId(View.NO_ID);
         stage.removeAllViews(); content = column();
         stage.addView(scroll(content), new LinearLayout.LayoutParams(-1, -1));
     }
